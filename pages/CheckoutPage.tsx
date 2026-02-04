@@ -77,31 +77,24 @@ const CheckoutPage = () => {
 
   const itemName = (item as any).title || (item as any).name;
   
-  // Strictly alphanumeric for Skrill to avoid "Bad Request" on special characters
-  const cleanItemName = itemName.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 50);
+  // Skrill is extremely picky. Strictly alphanumeric, no punctuation.
+  const skrillItemDescription = itemName.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 30).trim();
+  const skrillTransactionId = `TRX-${Date.now()}`;
   
   /**
-   * Constructs an absolute URL for Skrill return and cancel redirects.
-   * Skrill requires absolute URLs. For HashRouter apps, we combine the current origin,
-   * the base pathname (including index.html if present), and the hash path.
+   * Skrill requires absolute URLs. HashRouter apps are tricky.
+   * We ensure the URL is clean and absolute.
    */
   const getAbsoluteUrl = (hashPath: string) => {
-    // 1. Get origin + path without hash (e.g., https://ayyan.tech/ or https://ayyan.tech/index.html)
-    const baseUrlWithoutHash = window.location.origin + window.location.pathname.split('#')[0];
-    
-    // 2. Normalize by removing any trailing slash
-    const normalizedBase = baseUrlWithoutHash.replace(/\/$/, "");
-    
-    // 3. Ensure the hash path starts with a slash
+    const origin = window.location.origin;
+    const pathname = window.location.pathname.split('#')[0];
+    const baseUrl = `${origin}${pathname}`.replace(/\/$/, "");
     const formattedHashPath = hashPath.startsWith('/') ? hashPath : `/${hashPath}`;
-    
-    // 4. Combine into final absolute URL: [Origin/Path]/#[HashPath]
-    return `${normalizedBase}/#${formattedHashPath}`;
+    return `${baseUrl}/#${formattedHashPath}`;
   };
 
-  // Point back to checkout with success=true to show the success message
-  const returnUrl = getAbsoluteUrl(`/checkout?success=true&id=${itemId || ''}`);
-  const cancelUrl = getAbsoluteUrl(`/checkout?id=${itemId || ''}`);
+  const returnUrl = getAbsoluteUrl(`checkout?success=true&id=${itemId || ''}`);
+  const cancelUrl = getAbsoluteUrl(`checkout?id=${itemId || ''}`);
 
   return (
     <div className="bg-slate-50 py-16">
@@ -114,11 +107,11 @@ const CheckoutPage = () => {
         <div className="flex flex-col lg:flex-row gap-12">
           {/* Order Summary */}
           <div className="lg:w-2/3">
-            <Link to="/services" className="inline-flex items-center text-slate-500 hover:text-blue-600 mb-8 font-medium">
-              <ArrowLeft size={18} className="mr-2" /> Back
+            <Link to="/services" className="inline-flex items-center text-slate-500 hover:text-blue-600 mb-8 font-medium transition-colors">
+              <ArrowLeft size={18} className="mr-2" /> Back to Services
             </Link>
-            <div className="bg-white rounded-3xl p-8 border border-slate-200 mb-8">
-              <h1 className="text-2xl font-extrabold text-slate-900 mb-8">Checkout</h1>
+            <div className="bg-white rounded-3xl p-8 border border-slate-200 mb-8 shadow-sm">
+              <h1 className="text-2xl font-extrabold text-slate-900 mb-8">Checkout Summary</h1>
               
               <div className="space-y-6">
                 <div className="flex items-center justify-between py-6 border-b border-slate-100">
@@ -135,131 +128,138 @@ const CheckoutPage = () => {
                 </div>
 
                 <div className="space-y-3 py-6">
-                   <div className="flex justify-between text-slate-600">
+                   <div className="flex justify-between text-slate-600 text-sm">
                       <span>Subtotal</span>
-                      <span>${item.price}</span>
+                      <span>${item.price.toFixed(2)}</span>
                    </div>
-                   <div className="flex justify-between text-slate-600">
-                      <span>Transaction Fee</span>
-                      <span>$0.00</span>
+                   <div className="flex justify-between text-slate-600 text-sm">
+                      <span>Gateway Fee</span>
+                      <span className="text-green-600 font-medium">Free</span>
                    </div>
                    <div className="flex justify-between text-xl font-extrabold text-slate-900 pt-3 border-t border-slate-100">
-                      <span>Total</span>
-                      <span>${item.price}</span>
+                      <span>Total Amount</span>
+                      <span>${item.price.toFixed(2)}</span>
                    </div>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl p-8 border border-slate-200">
+            <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-sm">
               <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
-                <CreditCard size={20} className="text-blue-600" /> Payment Method
+                <CreditCard size={20} className="text-blue-600" /> Choose Payment Method
               </h2>
-              <div className="grid grid-cols-3 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                 <button 
                   onClick={() => setPaymentMethod('stripe')}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${paymentMethod === 'stripe' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-400 hover:border-slate-300'}`}
+                  className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${paymentMethod === 'stripe' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-100 text-slate-400 hover:border-slate-300'}`}
                 >
-                  <span className="text-sm font-bold">Stripe</span>
+                  <span className="text-sm font-bold uppercase tracking-widest">Stripe</span>
                 </button>
                 <button 
                   onClick={() => setPaymentMethod('paypal')}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${paymentMethod === 'paypal' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-400 hover:border-slate-300'}`}
+                  className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${paymentMethod === 'paypal' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-100 text-slate-400 hover:border-slate-300'}`}
                 >
-                  <span className="text-sm font-bold">PayPal</span>
+                  <span className="text-sm font-bold uppercase tracking-widest">PayPal</span>
                 </button>
                 <button 
                   onClick={() => setPaymentMethod('skrill')}
-                  className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${paymentMethod === 'skrill' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-200 text-slate-400 hover:border-slate-300'}`}
+                  className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all ${paymentMethod === 'skrill' ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-100 text-slate-400 hover:border-slate-300'}`}
                 >
-                  <span className="text-sm font-bold">Skrill</span>
+                  <span className="text-sm font-bold uppercase tracking-widest">Skrill</span>
                 </button>
               </div>
 
               {paymentMethod === 'skrill' ? (
-                <div className="space-y-6">
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-600">
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
+                  <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-sm text-slate-600">
                     <p className="mb-2 font-bold text-slate-900 flex items-center gap-2">
-                      <ExternalLink size={16} className="text-blue-600" /> Skrill Payment Confirmation
+                      <ShieldCheck size={18} className="text-blue-600" /> Skrill Secure Payment
                     </p>
-                    <p className="mb-3">
-                      Payment will be sent securely to: <span className="font-bold text-slate-900">chayyanjutt81@gmail.com</span>
+                    <p className="mb-4">
+                      Recipient: <span className="font-bold text-slate-900">chayyanjutt81@gmail.com</span>
                     </p>
-                    <p>Total amount: <strong>${item.price.toFixed(2)} USD</strong></p>
+                    <div className="flex justify-between items-center text-xs opacity-75">
+                      <span>Transaction ID:</span>
+                      <span className="font-mono uppercase">{skrillTransactionId}</span>
+                    </div>
                   </div>
                   
-                  {/* Skrill Quick Checkout Form with Correct Parameters */}
+                  {/* Skrill Payment Form */}
                   <form action="https://www.skrill.com/app/payment.pl" method="post">
-                    {/* Merchant Identification */}
+                    {/* Identification */}
                     <input type="hidden" name="pay_to_email" value="chayyanjutt81@gmail.com" />
+                    <input type="hidden" name="transaction_id" value={skrillTransactionId} />
                     
-                    {/* Transaction Details */}
+                    {/* Amount & Currency */}
                     <input type="hidden" name="amount" value={item.price.toFixed(2)} />
                     <input type="hidden" name="currency" value="USD" />
                     <input type="hidden" name="language" value="EN" />
                     
-                    {/* Description Fields */}
-                    <input type="hidden" name="detail1_description" value="Product:" />
-                    <input type="hidden" name="detail1_text" value={cleanItemName} />
+                    {/* Descriptions */}
+                    <input type="hidden" name="detail1_description" value="Service:" />
+                    <input type="hidden" name="detail1_text" value={skrillItemDescription} />
                     
-                    {/* Return and Cancel Hooks (Absolute URLs required by Skrill) */}
+                    {/* Redirects */}
                     <input type="hidden" name="return_url" value={returnUrl} />
+                    <input type="hidden" name="return_url_text" value="Return to Ayyan Tech" />
                     <input type="hidden" name="cancel_url" value={cancelUrl} />
                     
-                    {/* Custom Merchant Tracking Fields */}
-                    <input type="hidden" name="merchant_fields" value="item_id" />
-                    <input type="hidden" name="item_id" value={itemId || 'custom_order'} />
+                    {/* Notification (Optional but helps reliability) */}
+                    <input type="hidden" name="status_url" value="mailto:chayyanjutt81@gmail.com" />
                     
                     <button 
                       type="submit"
-                      className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all text-lg shadow-xl flex items-center justify-center gap-2"
+                      className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all text-lg shadow-xl shadow-blue-200 flex items-center justify-center gap-3 group"
                     >
-                      Pay with Skrill <ArrowLeft className="rotate-180" size={20} />
+                      Proceed to Skrill <ArrowLeft className="rotate-180 group-hover:translate-x-1 transition-transform" size={20} />
                     </button>
                   </form>
-                  <p className="text-xs text-center text-slate-400 italic">You will be redirected to the secure Skrill gateway to complete the transaction.</p>
+                  <p className="text-[10px] text-center text-slate-400 uppercase font-black tracking-widest italic">Secure Redirect to Skrill Gateway</p>
                 </div>
               ) : (
-                <div className="text-center py-10 border-2 border-dashed border-slate-100 rounded-2xl">
-                   <p className="text-slate-400 italic text-sm mb-4">
+                <div className="text-center py-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl animate-in fade-in duration-300">
+                   <p className="text-slate-500 font-medium mb-4">
                      {paymentMethod === 'stripe' ? "Stripe gateway is currently in maintenance." : "PayPal integration is coming soon."}
                    </p>
-                   <p className="text-slate-500 font-medium">Please select <span className="text-blue-600 font-bold">Skrill</span> to complete your purchase.</p>
+                   <p className="text-slate-600">Please use <span className="text-blue-600 font-bold underline cursor-pointer" onClick={() => setPaymentMethod('skrill')}>Skrill</span> for immediate processing.</p>
                 </div>
               )}
 
-              <p className="text-center text-slate-400 text-xs mt-8">
-                All transactions are encrypted and processed through official Skrill API protocols.
-              </p>
+              <div className="flex items-center justify-center gap-6 mt-10 pt-8 border-t border-slate-50">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Skrill_logo.svg" alt="Skrill" className="h-6 grayscale opacity-30 hover:grayscale-0 hover:opacity-100 transition-all" />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal" className="h-6 grayscale opacity-20" />
+                <img src="https://upload.wikimedia.org/wikipedia/commons/b/ba/Stripe_Logo%2C_revised_2016.svg" alt="Stripe" className="h-6 grayscale opacity-20" />
+              </div>
             </div>
           </div>
 
           {/* Sidebar Guarantee */}
           <div className="lg:w-1/3 space-y-6">
-            <div className="bg-blue-600 rounded-3xl p-8 text-white shadow-xl shadow-blue-200">
-               <ShieldCheck size={40} className="mb-6 opacity-80" />
-               <h3 className="text-xl font-bold mb-4">Quality Guarantee</h3>
+            <div className="bg-slate-900 rounded-3xl p-8 text-white shadow-xl shadow-slate-200 relative overflow-hidden">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl" />
+               <ShieldCheck size={40} className="mb-6 text-blue-500" />
+               <h3 className="text-xl font-bold mb-4">Order Protection</h3>
                <ul className="space-y-4">
-                 <li className="flex items-start gap-3 text-sm text-blue-100">
-                    <Check size={16} className="mt-0.5 flex-shrink-0" />
-                    <span>Plagiarism-free content with reports</span>
+                 <li className="flex items-start gap-3 text-sm text-slate-400">
+                    <Check size={16} className="mt-0.5 text-blue-500 flex-shrink-0" />
+                    <span>Instant delivery for PLR/Existing articles</span>
                  </li>
-                 <li className="flex items-start gap-3 text-sm text-blue-100">
-                    <Check size={16} className="mt-0.5 flex-shrink-0" />
-                    <span>SEO keyword research included</span>
+                 <li className="flex items-start gap-3 text-sm text-slate-400">
+                    <Check size={16} className="mt-0.5 text-blue-500 flex-shrink-0" />
+                    <span>24/7 priority support for all orders</span>
                  </li>
-                 <li className="flex items-start gap-3 text-sm text-blue-100">
-                    <Check size={16} className="mt-0.5 flex-shrink-0" />
-                    <span>Full commercial & resale rights</span>
+                 <li className="flex items-start gap-3 text-sm text-slate-400">
+                    <Check size={16} className="mt-0.5 text-blue-500 flex-shrink-0" />
+                    <span>Satisfaction guarantee on custom work</span>
                  </li>
                </ul>
             </div>
             
-            <div className="p-8 bg-white border border-slate-200 rounded-3xl">
-              <h4 className="font-bold text-slate-900 mb-4">Support</h4>
-              <p className="text-sm text-slate-500 mb-6">Need assistance or have specific delivery requirements? Let's discuss your project.</p>
-              <Link to="/contact" className="block w-full py-3 border border-slate-200 text-slate-600 rounded-xl text-center text-sm font-bold hover:bg-slate-50 transition-all">
-                Message Support
+            <div className="p-8 bg-white border border-slate-200 rounded-3xl shadow-sm">
+              <h4 className="font-bold text-slate-900 mb-4">Support Inquiries</h4>
+              <p className="text-sm text-slate-500 mb-6 leading-relaxed">Need a custom quote or faster delivery? Get in touch with me directly before placing your order.</p>
+              <Link to="/contact" className="block w-full py-3 bg-slate-50 text-slate-700 rounded-xl text-center text-sm font-bold hover:bg-slate-100 transition-all border border-slate-200">
+                Contact Ayyan
               </Link>
             </div>
           </div>
