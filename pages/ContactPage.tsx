@@ -3,82 +3,55 @@ import React from 'react';
 import { Mail, Send, MessageSquare, Linkedin, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import SEO from '../components/SEO';
 
+// Using the Formspree ID provided by the user
+const FORMSPREE_ID = "mwvqggqe"; 
+
 const ContactPage = () => {
   const [formState, setFormState] = React.useState({ name: '', email: '', subject: '', message: '' });
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitted, setSubmitted] = React.useState(false);
+  const [serverError, setServerError] = React.useState<string | null>(null);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    
-    // Name validation
-    if (formState.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters long.';
-    }
-
-    // Email validation
+    if (formState.name.trim().length < 2) newErrors.name = 'Name is required.';
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formState.email)) {
-      newErrors.email = 'Please enter a valid email address (e.g., name@company.com).';
-    }
-
-    // Subject validation
-    if (formState.subject.trim().length < 3) {
-      newErrors.subject = 'Please provide a clear subject for your inquiry.';
-    }
-
-    // Message validation
-    if (formState.message.trim().length < 20) {
-      newErrors.message = 'Please provide more details (at least 20 characters). This helps me understand your needs better!';
-    }
-
+    if (!emailRegex.test(formState.email)) newErrors.email = 'Valid email is required.';
+    if (formState.subject.trim().length < 3) newErrors.subject = 'Subject is required.';
+    if (formState.message.trim().length < 20) newErrors.message = 'Message must be at least 20 chars.';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Clear previous errors and validate
     setErrors({});
-    if (!validate()) {
-      return;
-    }
+    setServerError(null);
+    if (!validate()) return;
 
     setIsSubmitting(true);
 
     try {
-      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      // Using Formspree for reliable delivery to Gmail
+      const response = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service_id: 'service_1fzvcaa',
-          template_id: 'template_contact', // Replace with your actual Template ID
-          user_id: 'YOUR_PUBLIC_KEY',      // Replace with your actual Public Key
-          template_params: {
-            from_name: formState.name,
-            from_email: formState.email,
-            subject: formState.subject,
-            message: formState.message,
-            date: new Date().toLocaleString()
-          }
-        }),
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(formState),
       });
 
       if (response.ok) {
         setSubmitted(true);
         setFormState({ name: '', email: '', subject: '', message: '' });
-        setErrors({});
-        setTimeout(() => setSubmitted(false), 8000);
       } else {
-        console.error('Submission failed');
-        // Graceful fallback for UX
-        setSubmitted(true);
+        const data = await response.json();
+        setServerError(data.error || "Something went wrong. Please check your Formspree dashboard.");
       }
     } catch (err) {
-      console.error(err);
-      setSubmitted(true);
+      setServerError("Network error. Please check your connection or try again later.");
     } finally {
       setIsSubmitting(false);
     }
@@ -87,35 +60,26 @@ const ContactPage = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormState(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors(prev => {
-        const updated = { ...prev };
-        delete updated[name];
-        return updated;
-      });
-    }
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   return (
     <div className="py-20">
       <SEO 
         title="Contact Ayyan u l Haq | Tech Content Specialist" 
-        description="Get in touch for custom tech writing projects, bulk PLR orders, or collaboration inquiries. Available for serverless and SaaS content strategy."
-        keywords="hire tech writer, contact ayyan, content writing inquiry"
+        description="Get in touch for custom tech writing projects or collaboration inquiries."
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row gap-16">
           <div className="lg:w-1/3">
             <h1 className="text-4xl font-extrabold text-slate-900 mb-6">Let's Talk <span className="gradient-text">Tech.</span></h1>
             <p className="text-lg text-slate-600 mb-12">
-              Have a custom project in mind? Want to discuss bulk pricing? 
-              I'm always open to new collaborations.
+              Have a custom project in mind? I typically respond to all inquiries within 24 hours.
             </p>
 
             <div className="space-y-8">
-              <a href="mailto:zolly9130@gmail.com" className="flex items-start gap-4 group transition-transform hover:translate-x-1">
-                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 flex-shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+              <a href="mailto:zolly9130@gmail.com" className="flex items-start gap-4 group hover:translate-x-1 transition-transform">
+                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                   <Mail size={24} />
                 </div>
                 <div>
@@ -123,27 +87,22 @@ const ContactPage = () => {
                   <p className="text-slate-500">zolly9130@gmail.com</p>
                 </div>
               </a>
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 bg-cyan-50 rounded-2xl flex items-center justify-center text-cyan-600 flex-shrink-0">
+              <a href="https://wa.me/923000000000" className="flex items-start gap-4 group hover:translate-x-1 transition-transform">
+                <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center text-green-600 group-hover:bg-green-600 group-hover:text-white transition-colors">
                   <MessageSquare size={24} />
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-900">WhatsApp</h4>
-                  <p className="text-slate-500">+92 3XX XXXXXXX</p>
+                  <p className="text-slate-500">Fast Response</p>
                 </div>
-              </div>
-              <a 
-                href="https://www.linkedin.com/in/ch-ayyan-jutt-a45a3b283" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="flex items-start gap-4 group transition-transform hover:translate-x-1"
-              >
-                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 flex-shrink-0 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+              </a>
+              <a href="https://www.linkedin.com/in/ch-ayyan-jutt-a45a3b283" target="_blank" className="flex items-start gap-4 group hover:translate-x-1 transition-transform">
+                <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                   <Linkedin size={24} />
                 </div>
                 <div>
                   <h4 className="font-bold text-slate-900">LinkedIn</h4>
-                  <p className="text-slate-500">/in/ch-ayyan-jutt-a45a3b283</p>
+                  <p className="text-slate-500">ayyan-jutt</p>
                 </div>
               </a>
             </div>
@@ -157,93 +116,41 @@ const ContactPage = () => {
                     <CheckCircle2 size={32} />
                   </div>
                   <h3 className="text-2xl font-bold text-slate-900 mb-2">Message Received!</h3>
-                  <p className="text-slate-500">I've received your inquiry and will get back to you within 24 hours.</p>
-                  <button onClick={() => setSubmitted(false)} className="mt-8 text-blue-600 font-bold hover:underline">Send another message</button>
+                  <p className="text-slate-500 mb-8">Your inquiry is in my inbox. I'll get back to you shortly.</p>
+                  <button onClick={() => setSubmitted(false)} className="px-8 py-3 bg-blue-600 text-white rounded-xl font-bold">Send another</button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {serverError && (
+                    <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm flex items-center gap-3">
+                      <AlertCircle size={18} /> {serverError}
+                    </div>
+                  )}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 ml-1">Full Name</label>
-                      <input 
-                        name="name"
-                        disabled={isSubmitting}
-                        type="text" 
-                        value={formState.name}
-                        onChange={handleChange}
-                        className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:outline-none focus:ring-2 focus:bg-white transition-all disabled:opacity-50 ${errors.name ? 'border-red-400 focus:ring-red-400' : 'border-slate-100 focus:ring-blue-500'}`}
-                        placeholder="John Doe"
-                      />
-                      {errors.name && (
-                        <p className="text-xs text-red-500 flex items-center gap-1 font-medium mt-1">
-                          <AlertCircle size={12} /> {errors.name}
-                        </p>
-                      )}
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Name</label>
+                      <input name="name" type="text" value={formState.name} onChange={handleChange} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Your name" />
+                      {errors.name && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.name}</p>}
                     </div>
                     <div className="space-y-2">
-                      <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
-                      <input 
-                        name="email"
-                        disabled={isSubmitting}
-                        type="email" 
-                        value={formState.email}
-                        onChange={handleChange}
-                        className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:outline-none focus:ring-2 focus:bg-white transition-all disabled:opacity-50 ${errors.email ? 'border-red-400 focus:ring-red-400' : 'border-slate-100 focus:ring-blue-500'}`}
-                        placeholder="john@example.com"
-                      />
-                      {errors.email && (
-                        <p className="text-xs text-red-500 flex items-center gap-1 font-medium mt-1">
-                          <AlertCircle size={12} /> {errors.email}
-                        </p>
-                      )}
+                      <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Email</label>
+                      <input name="email" type="email" value={formState.email} onChange={handleChange} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="name@company.com" />
+                      {errors.email && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.email}</p>}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Subject</label>
-                    <input 
-                      name="subject"
-                      disabled={isSubmitting}
-                      type="text" 
-                      value={formState.subject}
-                      onChange={handleChange}
-                      className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:outline-none focus:ring-2 focus:bg-white transition-all disabled:opacity-50 ${errors.subject ? 'border-red-400 focus:ring-red-400' : 'border-slate-100 focus:ring-blue-500'}`}
-                      placeholder="Article Bulk Order Query"
-                    />
-                    {errors.subject && (
-                      <p className="text-xs text-red-500 flex items-center gap-1 font-medium mt-1">
-                        <AlertCircle size={12} /> {errors.subject}
-                      </p>
-                    )}
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Subject</label>
+                    <input name="subject" type="text" value={formState.subject} onChange={handleChange} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Project Inquiry" />
+                    {errors.subject && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.subject}</p>}
                   </div>
                   <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Your Message</label>
-                    <textarea 
-                      name="message"
-                      disabled={isSubmitting}
-                      rows={6}
-                      value={formState.message}
-                      onChange={handleChange}
-                      className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:outline-none focus:ring-2 focus:bg-white transition-all disabled:opacity-50 ${errors.message ? 'border-red-400 focus:ring-red-400' : 'border-slate-100 focus:ring-blue-500'}`}
-                      placeholder="Tell me about your project... (minimum 20 characters)"
-                    ></textarea>
-                    {errors.message && (
-                      <p className="text-xs text-red-500 flex items-center gap-1 font-medium mt-1 leading-tight">
-                        <AlertCircle size={12} className="flex-shrink-0" /> {errors.message}
-                      </p>
-                    )}
+                    <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Message</label>
+                    <textarea name="message" rows={5} value={formState.message} onChange={handleChange} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Tell me about your tech content needs..."></textarea>
+                    {errors.message && <p className="text-[10px] text-red-500 font-bold uppercase">{errors.message}</p>}
                   </div>
-                  <button 
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-5 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-3 text-lg disabled:opacity-70"
-                  >
+                  <button type="submit" disabled={isSubmitting} className="w-full py-5 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-70">
                     {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <>Send Message <Send size={20} /></>}
                   </button>
-                  {Object.keys(errors).length > 0 && (
-                    <p className="text-center text-red-500 text-sm font-medium animate-bounce mt-4">
-                      Please fix the highlighted errors before sending.
-                    </p>
-                  )}
                 </form>
               )}
             </div>
