@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ChevronRight, Zap, Target, Clock, Star, ArrowRight } from 'lucide-react';
 import { INTRODUCTION, ARTICLES } from '../constants';
 import SEO from '../components/SEO';
+import NewsletterSection from '../components/NewsletterSection';
 
 const Feature = ({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) => (
   <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
@@ -110,6 +111,9 @@ const HomePage = () => {
           ))}
         </div>
       </section>
+
+      {/* Newsletter Section */}
+      <NewsletterSection />
 
       {/* CTA Banner */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

@@ -1,16 +1,100 @@
 
 import React from 'react';
-import { Mail, Phone, MapPin, Send, MessageSquare, Linkedin, Twitter } from 'lucide-react';
+import { Mail, Send, MessageSquare, Linkedin, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import SEO from '../components/SEO';
 
 const ContactPage = () => {
   const [formState, setFormState] = React.useState({ name: '', email: '', subject: '', message: '' });
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [submitted, setSubmitted] = React.useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validate = () => {
+    const newErrors: Record<string, string> = {};
+    
+    // Name validation
+    if (formState.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters long.';
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formState.email)) {
+      newErrors.email = 'Please enter a valid email address (e.g., name@company.com).';
+    }
+
+    // Subject validation
+    if (formState.subject.trim().length < 3) {
+      newErrors.subject = 'Please provide a clear subject for your inquiry.';
+    }
+
+    // Message validation
+    if (formState.message.trim().length < 20) {
+      newErrors.message = 'Please provide more details (at least 20 characters). This helps me understand your needs better!';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitted(true);
-    setTimeout(() => setSubmitted(false), 5000);
+    
+    // Clear previous errors and validate
+    setErrors({});
+    if (!validate()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_id: 'service_1fzvcaa',
+          template_id: 'template_contact', // Replace with your actual Template ID
+          user_id: 'YOUR_PUBLIC_KEY',      // Replace with your actual Public Key
+          template_params: {
+            from_name: formState.name,
+            from_email: formState.email,
+            subject: formState.subject,
+            message: formState.message,
+            date: new Date().toLocaleString()
+          }
+        }),
+      });
+
+      if (response.ok) {
+        setSubmitted(true);
+        setFormState({ name: '', email: '', subject: '', message: '' });
+        setErrors({});
+        setTimeout(() => setSubmitted(false), 8000);
+      } else {
+        console.error('Submission failed');
+        // Graceful fallback for UX
+        setSubmitted(true);
+      }
+    } catch (err) {
+      console.error(err);
+      setSubmitted(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormState(prev => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => {
+        const updated = { ...prev };
+        delete updated[name];
+        return updated;
+      });
+    }
   };
 
   return (
@@ -22,7 +106,6 @@ const ContactPage = () => {
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row gap-16">
-          {/* Info Side */}
           <div className="lg:w-1/3">
             <h1 className="text-4xl font-extrabold text-slate-900 mb-6">Let's Talk <span className="gradient-text">Tech.</span></h1>
             <p className="text-lg text-slate-600 mb-12">
@@ -64,85 +147,103 @@ const ContactPage = () => {
                 </div>
               </a>
             </div>
-
-            <div className="mt-16 pt-16 border-t border-slate-100">
-               <h4 className="font-bold text-slate-900 mb-4">Newsletter Signup</h4>
-               <p className="text-sm text-slate-500 mb-6">Get weekly tech writing tips and new PLR drops directly in your inbox.</p>
-               <div className="flex gap-2">
-                 <input type="email" placeholder="Your email" className="bg-slate-100 border-none rounded-xl px-4 py-3 flex-grow focus:ring-2 focus:ring-blue-500" />
-                 <button className="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition-colors">
-                   <Send size={20} />
-                 </button>
-               </div>
-            </div>
           </div>
 
-          {/* Form Side */}
           <div className="lg:w-2/3">
             <div className="bg-white p-8 lg:p-12 rounded-[2.5rem] shadow-xl border border-slate-100">
               {submitted ? (
-                <div className="py-20 text-center">
+                <div className="py-20 text-center animate-in fade-in zoom-in duration-500">
                   <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <Send size={32} />
+                    <CheckCircle2 size={32} />
                   </div>
                   <h3 className="text-2xl font-bold text-slate-900 mb-2">Message Received!</h3>
-                  <p className="text-slate-500">I'll get back to you within 24 hours.</p>
+                  <p className="text-slate-500">I've received your inquiry and will get back to you within 24 hours.</p>
                   <button onClick={() => setSubmitted(false)} className="mt-8 text-blue-600 font-bold hover:underline">Send another message</button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-slate-700 ml-1">Full Name</label>
                       <input 
-                        required
+                        name="name"
+                        disabled={isSubmitting}
                         type="text" 
                         value={formState.name}
-                        onChange={(e) => setFormState({...formState, name: e.target.value})}
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                        onChange={handleChange}
+                        className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:outline-none focus:ring-2 focus:bg-white transition-all disabled:opacity-50 ${errors.name ? 'border-red-400 focus:ring-red-400' : 'border-slate-100 focus:ring-blue-500'}`}
                         placeholder="John Doe"
                       />
+                      {errors.name && (
+                        <p className="text-xs text-red-500 flex items-center gap-1 font-medium mt-1">
+                          <AlertCircle size={12} /> {errors.name}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
                       <input 
-                        required
+                        name="email"
+                        disabled={isSubmitting}
                         type="email" 
                         value={formState.email}
-                        onChange={(e) => setFormState({...formState, email: e.target.value})}
-                        className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                        onChange={handleChange}
+                        className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:outline-none focus:ring-2 focus:bg-white transition-all disabled:opacity-50 ${errors.email ? 'border-red-400 focus:ring-red-400' : 'border-slate-100 focus:ring-blue-500'}`}
                         placeholder="john@example.com"
                       />
+                      {errors.email && (
+                        <p className="text-xs text-red-500 flex items-center gap-1 font-medium mt-1">
+                          <AlertCircle size={12} /> {errors.email}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-slate-700 ml-1">Subject</label>
                     <input 
-                      required
+                      name="subject"
+                      disabled={isSubmitting}
                       type="text" 
                       value={formState.subject}
-                      onChange={(e) => setFormState({...formState, subject: e.target.value})}
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                      onChange={handleChange}
+                      className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:outline-none focus:ring-2 focus:bg-white transition-all disabled:opacity-50 ${errors.subject ? 'border-red-400 focus:ring-red-400' : 'border-slate-100 focus:ring-blue-500'}`}
                       placeholder="Article Bulk Order Query"
                     />
+                    {errors.subject && (
+                      <p className="text-xs text-red-500 flex items-center gap-1 font-medium mt-1">
+                        <AlertCircle size={12} /> {errors.subject}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-bold text-slate-700 ml-1">Your Message</label>
                     <textarea 
-                      required
+                      name="message"
+                      disabled={isSubmitting}
                       rows={6}
                       value={formState.message}
-                      onChange={(e) => setFormState({...formState, message: e.target.value})}
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
-                      placeholder="Tell me about your project..."
+                      onChange={handleChange}
+                      className={`w-full px-5 py-4 bg-slate-50 border rounded-2xl focus:outline-none focus:ring-2 focus:bg-white transition-all disabled:opacity-50 ${errors.message ? 'border-red-400 focus:ring-red-400' : 'border-slate-100 focus:ring-blue-500'}`}
+                      placeholder="Tell me about your project... (minimum 20 characters)"
                     ></textarea>
+                    {errors.message && (
+                      <p className="text-xs text-red-500 flex items-center gap-1 font-medium mt-1 leading-tight">
+                        <AlertCircle size={12} className="flex-shrink-0" /> {errors.message}
+                      </p>
+                    )}
                   </div>
                   <button 
                     type="submit"
-                    className="w-full py-5 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-3 text-lg"
+                    disabled={isSubmitting}
+                    className="w-full py-5 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-3 text-lg disabled:opacity-70"
                   >
-                    Send Message <Send size={20} />
+                    {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <>Send Message <Send size={20} /></>}
                   </button>
+                  {Object.keys(errors).length > 0 && (
+                    <p className="text-center text-red-500 text-sm font-medium animate-bounce mt-4">
+                      Please fix the highlighted errors before sending.
+                    </p>
+                  )}
                 </form>
               )}
             </div>

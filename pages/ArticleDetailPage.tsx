@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Clock, Calendar, Share2, MessageCircle, ShoppingCart, Sparkles } from 'lucide-react';
+import { ArrowLeft, Clock, Calendar, Share2, MessageCircle, ShoppingCart, Sparkles, Twitter, Linkedin, Facebook, Copy, Check } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { getArticleSummary } from '../geminiService';
 import SEO from '../components/SEO';
@@ -10,6 +10,7 @@ const ArticleDetailPage = () => {
   const { id } = useParams();
   const [summary, setSummary] = React.useState<string | null>(null);
   const [isSummarizing, setIsSummarizing] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
   
   const article = ARTICLES.find(a => a.id === id);
 
@@ -20,6 +21,21 @@ const ArticleDetailPage = () => {
     const res = await getArticleSummary(article.excerpt + " " + article.content);
     setSummary(res);
     setIsSummarizing(false);
+  };
+
+  const shareUrl = window.location.href;
+  const shareTitle = article.title;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareLinks = {
+    twitter: `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`,
+    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
+    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
   };
 
   return (
@@ -123,15 +139,48 @@ const ArticleDetailPage = () => {
               </div>
             )}
 
-            {/* Social Share */}
-            <div className="flex items-center justify-between pt-8 border-t border-slate-100">
-              <div className="flex gap-4">
-                <button className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors text-sm font-bold">
-                  <Share2 size={18} /> Share
-                </button>
-                <button className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-colors text-sm font-bold">
-                  <MessageCircle size={18} /> Comment
-                </button>
+            {/* Social Share Enhanced */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-8 border-t border-slate-100">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-bold text-slate-900 uppercase tracking-widest flex items-center gap-2">
+                  <Share2 size={16} className="text-blue-600" /> Share
+                </span>
+                <div className="flex gap-2">
+                  <a 
+                    href={shareLinks.twitter} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-black hover:text-white transition-all"
+                    title="Share on X (Twitter)"
+                  >
+                    <Twitter size={18} />
+                  </a>
+                  <a 
+                    href={shareLinks.linkedin} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-[#0077b5] hover:text-white transition-all"
+                    title="Share on LinkedIn"
+                  >
+                    <Linkedin size={18} />
+                  </a>
+                  <a 
+                    href={shareLinks.facebook} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-[#1877f2] hover:text-white transition-all"
+                    title="Share on Facebook"
+                  >
+                    <Facebook size={18} />
+                  </a>
+                  <button 
+                    onClick={handleCopyLink}
+                    className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 text-slate-600 hover:bg-blue-600 hover:text-white transition-all"
+                    title="Copy Link"
+                  >
+                    {copied ? <Check size={18} /> : <Copy size={18} />}
+                  </button>
+                </div>
               </div>
               <div className="flex gap-2">
                 {['Serverless', 'Cloud', 'SaaS'].map(tag => (
