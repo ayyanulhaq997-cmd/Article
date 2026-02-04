@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Clock, Calendar, Share2, MessageCircle, ShoppingCart, Sparkles } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { getArticleSummary } from '../geminiService';
+import SEO from '../components/SEO';
 
 const ArticleDetailPage = () => {
   const { id } = useParams();
@@ -23,6 +24,13 @@ const ArticleDetailPage = () => {
 
   return (
     <div className="pb-20">
+      <SEO 
+        title={`${article.title} | Ayyan's Tech Hub`}
+        description={article.excerpt}
+        keywords={`${article.category}, tech tutorial, ${article.title.split(' ').slice(0, 3).join(', ')}`}
+        ogImage={article.image}
+        ogType="article"
+      />
       {/* Header */}
       <div className="bg-slate-50 pt-12 pb-20">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">

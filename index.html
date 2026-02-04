@@ -5,10 +5,33 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ayyan u l Haq | Tech Content Writer</title>
+  <meta name="description" content="Professional tech content writer specializing in serverless, SaaS, and cloud computing. SEO-optimized articles and custom writing services.">
+  <meta name="keywords" content="tech writer, serverless, SaaS, cloud computing, SEO content, Ayyan u l Haq">
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ayyan.tech/">
+  <meta property="og:title" content="Ayyan u l Haq | Tech Content Writer">
+  <meta property="og:description" content="Professional tech content writer specializing in serverless, SaaS, and cloud computing.">
+  <meta property="og:image" content="https://picsum.photos/seed/ayyan/1200/630">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://ayyan.tech/">
+  <meta property="twitter:title" content="Ayyan u l Haq | Tech Content Writer">
+  <meta property="twitter:description" content="Professional tech content writer specializing in serverless, SaaS, and cloud computing.">
+  <meta property="twitter:image" content="https://picsum.photos/seed/ayyan/1200/630">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  
+  <script>
+    // Shim for process.env to prevent crashes in browser environments
+    window.process = window.process || { env: {} };
+  </script>
+
   <style>
     body {
       font-family: 'Inter', sans-serif;
@@ -22,20 +45,24 @@
       -webkit-text-fill-color: transparent;
     }
   </style>
-<script type="importmap">
-{
-  "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react-router-dom": "https://esm.sh/react-router-dom@^7.13.0",
-    "@google/genai": "https://esm.sh/@google/genai@^1.39.0"
+
+  <script type="importmap">
+  {
+    "imports": {
+      "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+      "react/": "https://esm.sh/react@^19.2.4/",
+      "react": "https://esm.sh/react@^19.2.4",
+      "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+      "react-dom": "https://esm.sh/react-dom@^19.2.4",
+      "react-router-dom": "https://esm.sh/react-router-dom@^7.13.0",
+      "@google/genai": "https://esm.sh/@google/genai@^1.39.0"
+    }
   }
-}
-</script>
+  </script>
 </head>
 <body class="bg-slate-50 text-slate-900">
   <div id="root"></div>
+  <!-- Main entry point -->
+  <script type="module" src="index.tsx"></script>
 </body>
 </html>

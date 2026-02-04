@@ -3,6 +3,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, Zap, Target, Clock, Star, ArrowRight } from 'lucide-react';
 import { INTRODUCTION, ARTICLES } from '../constants';
+import SEO from '../components/SEO';
 
 const Feature = ({ icon: Icon, title, desc }: { icon: any, title: string, desc: string }) => (
   <div className="p-6 bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow group">
@@ -19,6 +20,11 @@ const HomePage = () => {
 
   return (
     <div className="space-y-24 pb-20">
+      <SEO 
+        title="Ayyan u l Haq | Tech Content Writer & Cloud Specialist" 
+        description="Professional tech content writing specializing in serverless, SaaS, and cloud computing. Get SEO-optimized articles that boost your blog traffic."
+        keywords="tech writer, cloud computing writer, serverless expert, SaaS content, SEO writing services"
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden pt-20 pb-16 lg:pt-32 lg:pb-32 bg-slate-50">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none opacity-10">

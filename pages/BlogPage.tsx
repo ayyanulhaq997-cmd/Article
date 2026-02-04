@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { Search, Filter, ShoppingCart, Tag } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { Category } from '../types';
+import SEO from '../components/SEO';
 
 const BlogPage = () => {
   const [search, setSearch] = React.useState('');
@@ -20,6 +21,11 @@ const BlogPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <SEO 
+        title="Tech Insights & Articles | Ayyan's Tech Hub" 
+        description="Deep dives into serverless architecture, SaaS growth, and cloud infrastructure. High-quality tech articles for developers and founders."
+        keywords="tech blog, serverless articles, cloud computing tutorials, SaaS growth, developer content"
+      />
       <div className="mb-12">
         <h1 className="text-4xl font-extrabold text-slate-900 mb-4">Tech Insights</h1>
         <p className="text-slate-600 max-w-2xl">

@@ -2,10 +2,16 @@
 import React from 'react';
 import { ExternalLink, FileText, Download, Quote } from 'lucide-react';
 import { PORTFOLIO } from '../constants';
+import SEO from '../components/SEO';
 
 const PortfolioPage = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <SEO 
+        title="Writing Portfolio | Ayyan u l Haq" 
+        description="Showcase of professional tech articles and tutorials published across top platforms. Specialized in serverless, SaaS, and cloud architecture."
+        keywords="writing samples, tech portfolio, content writer samples, Ayyan portfolio"
+      />
       <div className="mb-16">
         <h1 className="text-4xl font-extrabold text-slate-900 mb-4">Writing Portfolio</h1>
         <p className="text-slate-600 max-w-2xl">

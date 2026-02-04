@@ -3,6 +3,7 @@ import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { CreditCard, ShieldCheck, Check, ShoppingBag, ArrowLeft, ExternalLink } from 'lucide-react';
 import { ARTICLES, SERVICES } from '../constants';
+import SEO from '../components/SEO';
 
 const CheckoutPage = () => {
   const query = new URLSearchParams(useLocation().search);
@@ -23,18 +24,22 @@ const CheckoutPage = () => {
 
   const itemName = (item as any).title || (item as any).name;
   
-  // Skrill parameters often fail if special characters are present in text fields.
-  // We sanitize the item name to ensure only alphanumeric characters and spaces are sent.
+  // Strictly alphanumeric for Skrill to avoid "Bad Request" on special characters
   const cleanItemName = itemName.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 50);
+  const transactionId = `TRX-${Date.now()}`;
   
-  // Construct absolute URLs as required by Skrill's payment gateway.
-  // Using window.location.origin and window.location.pathname ensures the full URL is provided.
+  // Construct absolute URLs for return and cancel
   const baseUrl = window.location.origin + window.location.pathname;
   const returnUrl = `${baseUrl}#/portfolio`;
   const cancelUrl = `${baseUrl}#/checkout?id=${itemId || ''}`;
 
   return (
     <div className="bg-slate-50 py-16">
+      <SEO 
+        title="Secure Checkout | Ayyan's Tech Hub" 
+        description={`Complete your purchase for ${itemName} securely via Skrill.`}
+        keywords="secure checkout, buy tech articles, skrill payment"
+      />
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         <div className="flex flex-col lg:flex-row gap-12">
           {/* Order Summary */}

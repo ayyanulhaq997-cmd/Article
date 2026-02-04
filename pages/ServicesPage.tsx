@@ -1,13 +1,18 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-// Fixed: Added missing 'Target' icon import
 import { Check, Clock, ShieldCheck, Zap, ArrowRight, Star, Target } from 'lucide-react';
 import { SERVICES } from '../constants';
+import SEO from '../components/SEO';
 
 const ServicesPage = () => {
   return (
     <div className="py-20 bg-slate-50">
+      <SEO 
+        title="Premium Tech Writing Services | Ayyan's Tech Hub" 
+        description="High-quality, SEO-optimized tech content services. Custom articles, PLR bundles, and keyword research for tech blogs and SaaS companies."
+        keywords="hire tech writer, tech content services, PLR tech articles, SaaS writing, cloud architecture blogging"
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-3xl mx-auto mb-20">
           <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-6">
@@ -52,7 +57,7 @@ const ServicesPage = () => {
                   <Clock size={14} /> Est. Delivery: {service.deliveryTime}
                 </div>
               </div>
-              <Link to="/checkout" className={`w-full py-4 rounded-xl font-bold text-center transition-all flex items-center justify-center gap-2 ${
+              <Link to={`/checkout?id=${service.id}`} className={`w-full py-4 rounded-xl font-bold text-center transition-all flex items-center justify-center gap-2 ${
                 service.id === 'custom-article'
                 ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-200'
                 : 'bg-slate-100 text-slate-900 hover:bg-slate-200'

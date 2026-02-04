@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Mail, Phone, MapPin, Send, MessageSquare, Linkedin, Twitter } from 'lucide-react';
+import SEO from '../components/SEO';
 
 const ContactPage = () => {
   const [formState, setFormState] = React.useState({ name: '', email: '', subject: '', message: '' });
@@ -14,6 +15,11 @@ const ContactPage = () => {
 
   return (
     <div className="py-20">
+      <SEO 
+        title="Contact Ayyan u l Haq | Tech Content Specialist" 
+        description="Get in touch for custom tech writing projects, bulk PLR orders, or collaboration inquiries. Available for serverless and SaaS content strategy."
+        keywords="hire tech writer, contact ayyan, content writing inquiry"
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row gap-16">
           {/* Info Side */}
