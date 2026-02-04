@@ -85,14 +85,13 @@ const CheckoutPage = () => {
   
   /**
    * Skrill requires absolute URLs. HashRouter apps are tricky.
-   * We ensure the URL is absolute and use standard encoding.
+   * We use window.location.origin + pathname + #/ + hashPath
    */
   const getAbsoluteUrl = (hashPath: string) => {
     const origin = window.location.origin;
-    const pathname = window.location.pathname.split('#')[0];
-    const baseUrl = `${origin}${pathname}`.replace(/\/$/, "");
-    // Note: Some gateways hate the #. We'll try to keep it as standard as possible.
-    return `${baseUrl}/#/${hashPath}`;
+    const pathname = window.location.pathname;
+    // Constructing the full URL including the hash fragment
+    return `${origin}${pathname}#/${hashPath}`;
   };
 
   const returnUrl = getAbsoluteUrl(`checkout?success=true&id=${itemId || ''}`);
