@@ -77,20 +77,22 @@ const CheckoutPage = () => {
 
   const itemName = (item as any).title || (item as any).name;
   
-  // Skrill is extremely picky. Strictly alphanumeric, no punctuation.
-  const skrillItemDescription = itemName.replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 30).trim();
-  const skrillTransactionId = `TRX-${Date.now()}`;
+  // SKRILL STRICT PARAMETER FORMATTING
+  // 1. Description: Alphanumeric only, NO SPACES, max 30 chars
+  const skrillItemValue = itemName.replace(/[^a-zA-Z0-9]/g, '').substring(0, 30);
+  // 2. Transaction ID: Numeric only is safest
+  const skrillTransactionId = Date.now().toString();
   
   /**
    * Skrill requires absolute URLs. HashRouter apps are tricky.
-   * We ensure the URL is clean and absolute.
+   * We ensure the URL is absolute and use standard encoding.
    */
   const getAbsoluteUrl = (hashPath: string) => {
     const origin = window.location.origin;
     const pathname = window.location.pathname.split('#')[0];
     const baseUrl = `${origin}${pathname}`.replace(/\/$/, "");
-    const formattedHashPath = hashPath.startsWith('/') ? hashPath : `/${hashPath}`;
-    return `${baseUrl}/#${formattedHashPath}`;
+    // Note: Some gateways hate the #. We'll try to keep it as standard as possible.
+    return `${baseUrl}/#/${hashPath}`;
   };
 
   const returnUrl = getAbsoluteUrl(`checkout?success=true&id=${itemId || ''}`);
@@ -173,20 +175,20 @@ const CheckoutPage = () => {
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                   <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 text-sm text-slate-600">
                     <p className="mb-2 font-bold text-slate-900 flex items-center gap-2">
-                      <ShieldCheck size={18} className="text-blue-600" /> Skrill Secure Payment
+                      <ShieldCheck size={18} className="text-blue-600" /> Skrill Secure Gateway
                     </p>
                     <p className="mb-4">
                       Recipient: <span className="font-bold text-slate-900">chayyanjutt81@gmail.com</span>
                     </p>
                     <div className="flex justify-between items-center text-xs opacity-75">
-                      <span>Transaction ID:</span>
+                      <span>Ref ID:</span>
                       <span className="font-mono uppercase">{skrillTransactionId}</span>
                     </div>
                   </div>
                   
-                  {/* Skrill Payment Form */}
+                  {/* Skrill Payment Form - Cleanest possible implementation */}
                   <form action="https://www.skrill.com/app/payment.pl" method="post">
-                    {/* Identification */}
+                    {/* Required Identification */}
                     <input type="hidden" name="pay_to_email" value="chayyanjutt81@gmail.com" />
                     <input type="hidden" name="transaction_id" value={skrillTransactionId} />
                     
@@ -195,26 +197,22 @@ const CheckoutPage = () => {
                     <input type="hidden" name="currency" value="USD" />
                     <input type="hidden" name="language" value="EN" />
                     
-                    {/* Descriptions */}
-                    <input type="hidden" name="detail1_description" value="Service:" />
-                    <input type="hidden" name="detail1_text" value={skrillItemDescription} />
+                    {/* Item Information - Mandatory pairs */}
+                    <input type="hidden" name="detail1_description" value="Product" />
+                    <input type="hidden" name="detail1_text" value={skrillItemValue} />
                     
-                    {/* Redirects */}
+                    {/* Absolute Redirect URLs */}
                     <input type="hidden" name="return_url" value={returnUrl} />
-                    <input type="hidden" name="return_url_text" value="Return to Ayyan Tech" />
                     <input type="hidden" name="cancel_url" value={cancelUrl} />
-                    
-                    {/* Notification (Optional but helps reliability) */}
-                    <input type="hidden" name="status_url" value="mailto:chayyanjutt81@gmail.com" />
                     
                     <button 
                       type="submit"
                       className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all text-lg shadow-xl shadow-blue-200 flex items-center justify-center gap-3 group"
                     >
-                      Proceed to Skrill <ArrowLeft className="rotate-180 group-hover:translate-x-1 transition-transform" size={20} />
+                      Pay Securely with Skrill <ArrowLeft className="rotate-180 group-hover:translate-x-1 transition-transform" size={20} />
                     </button>
                   </form>
-                  <p className="text-[10px] text-center text-slate-400 uppercase font-black tracking-widest italic">Secure Redirect to Skrill Gateway</p>
+                  <p className="text-[10px] text-center text-slate-400 uppercase font-black tracking-widest italic">Encrypted Secure Checkout</p>
                 </div>
               ) : (
                 <div className="text-center py-12 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl animate-in fade-in duration-300">
