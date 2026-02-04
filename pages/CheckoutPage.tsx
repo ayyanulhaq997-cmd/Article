@@ -1,29 +1,23 @@
 import React from "react";
 import { useLocation, Link } from "react-router-dom";
 import {
-  CreditCard,
   ShieldCheck,
   Check,
   ShoppingBag,
   ArrowLeft,
-  ExternalLink,
-  CheckCircle2,
   PartyPopper,
+  ExternalLink,
 } from "lucide-react";
-import { ARTICLES, SERVICES } from "../constants";
 import SEO from "../components/SEO";
+import { ARTICLES, SERVICES } from "../constants";
 
 const CheckoutPage: React.FC = () => {
   const query = new URLSearchParams(useLocation().search);
   const itemId = query.get("id");
-  const isSuccess = query.get("success") === "true";
+  const success = query.get("success") === "true";
 
-  const [paymentMethod, setPaymentMethod] = React.useState<
-    "stripe" | "paypal" | "skrill"
-  >("skrill");
-
-  const article = ARTICLES.find((a) => a.id === itemId);
-  const service = SERVICES.find((s) => s.id === itemId);
+  const article = ARTICLES.find(a => a.id === itemId);
+  const service = SERVICES.find(s => s.id === itemId);
   const item = article || service;
 
   if (!item) {
@@ -31,7 +25,7 @@ const CheckoutPage: React.FC = () => {
       <div className="py-20 text-center">
         <h2 className="text-2xl font-bold mb-4">No item selected</h2>
         <Link to="/services" className="text-blue-600 font-bold">
-          Return to Services
+          Back to services
         </Link>
       </div>
     );
@@ -39,154 +33,111 @@ const CheckoutPage: React.FC = () => {
 
   const itemName = (item as any).title || (item as any).name;
 
-  /* ========================
-     SUCCESS PAGE
-  ========================= */
-  if (isSuccess) {
+  /* ---------------- SUCCESS PAGE ---------------- */
+  if (success) {
     return (
       <div className="min-h-[70vh] flex items-center justify-center bg-slate-50 px-4">
-        <SEO title="Payment Successful" />
-        <div className="bg-white p-10 rounded-3xl shadow-xl text-center max-w-md w-full">
-          <div className="w-24 h-24 mx-auto bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-6">
-            <CheckCircle2 size={48} />
-          </div>
-          <h1 className="text-3xl font-bold mb-3">Payment Successful!</h1>
+        <SEO title="Payment Received" />
+        <div className="bg-white rounded-3xl p-10 max-w-md w-full text-center shadow-xl">
+          <PartyPopper className="mx-auto text-green-600 mb-6" size={48} />
+          <h1 className="text-2xl font-extrabold mb-3">Payment Submitted</h1>
           <p className="text-slate-600 mb-6">
-            Thank you! Your order is being processed.
+            Thanks! Once your Payoneer payment is confirmed, I’ll start working immediately.
           </p>
 
-          <div className="bg-slate-50 p-5 rounded-xl mb-6">
-            <div className="flex justify-between">
-              <span>{itemName}</span>
-              <strong>${item.price.toFixed(2)}</strong>
-            </div>
+          <div className="bg-slate-50 p-5 rounded-xl text-left mb-6">
+            <p className="font-semibold">{itemName}</p>
+            <p className="text-blue-600 font-bold">${item.price.toFixed(2)}</p>
           </div>
 
           <Link
             to="/"
-            className="block bg-blue-600 text-white py-3 rounded-xl font-bold"
+            className="block w-full py-3 bg-blue-600 text-white rounded-xl font-bold"
           >
-            Go Home
+            Return Home
           </Link>
-
-          <p className="mt-4 text-slate-400 text-sm flex justify-center gap-2">
-            <PartyPopper size={16} /> Happy writing
-          </p>
         </div>
       </div>
     );
   }
 
-  /* ========================
-     SKRILL SAFE VALUES
-  ========================= */
-  const transactionId = Date.now().toString();
-  const returnUrl = `${window.location.origin}/checkout?success=true&id=${itemId}`;
-  const cancelUrl = `${window.location.origin}/checkout?id=${itemId}`;
-
+  /* ---------------- CHECKOUT PAGE ---------------- */
   return (
     <div className="bg-slate-50 py-16">
-      <SEO title="Secure Checkout" />
+      <SEO title="Checkout | Payoneer Payment" />
 
-      <div className="max-w-5xl mx-auto px-4">
+      <div className="max-w-4xl mx-auto px-4">
         <Link
           to="/services"
-          className="inline-flex items-center text-slate-500 mb-8"
+          className="inline-flex items-center mb-6 text-slate-500 hover:text-blue-600"
         >
           <ArrowLeft size={18} className="mr-2" /> Back
         </Link>
 
         <div className="bg-white rounded-3xl p-8 shadow-sm border">
-          <h1 className="text-2xl font-bold mb-6">Checkout</h1>
+          <h1 className="text-2xl font-extrabold mb-8">Checkout Summary</h1>
 
-          <div className="flex justify-between border-b pb-6 mb-6">
+          {/* Item */}
+          <div className="flex justify-between items-center border-b pb-6 mb-6">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center">
-                {(item as any).title ? (
-                  <ShoppingBag />
-                ) : (
-                  <Check />
-                )}
+                <ShoppingBag className="text-blue-600" />
               </div>
               <div>
-                <h3 className="font-bold">{itemName}</h3>
-                <p className="text-sm text-slate-500">
-                  {(item as any).category || (item as any).deliveryTime}
-                </p>
+                <p className="font-bold">{itemName}</p>
+                <p className="text-sm text-slate-500">Digital Service</p>
               </div>
             </div>
-            <strong>${item.price.toFixed(2)}</strong>
+            <p className="text-lg font-bold">${item.price.toFixed(2)}</p>
           </div>
 
-          <div className="mb-8">
-            <h2 className="font-bold mb-4 flex items-center gap-2">
-              <CreditCard size={18} /> Payment Method
-            </h2>
-
-            <button
-              onClick={() => setPaymentMethod("skrill")}
-              className="border-2 border-blue-600 bg-blue-50 px-6 py-4 rounded-xl font-bold"
-            >
-              Skrill
-            </button>
+          {/* Total */}
+          <div className="flex justify-between font-extrabold text-xl mb-8">
+            <span>Total</span>
+            <span>${item.price.toFixed(2)}</span>
           </div>
 
-          {/* ========================
-             SKRILL FORM (FIXED)
-          ========================= */}
-          {paymentMethod === "skrill" && (
-            <div className="bg-slate-50 p-6 rounded-2xl">
-              <div className="mb-4 text-sm">
-                <p className="font-bold flex items-center gap-2">
-                  <ShieldCheck size={16} /> Skrill Secure Checkout
-                </p>
-                <p className="text-slate-500">
-                  Pay to: <strong>chayyanjutt81@gmail.com</strong>
-                </p>
-              </div>
-
-              <form action="https://pay.skrill.com" method="post">
-                <input
-                  type="hidden"
-                  name="pay_to_email"
-                  value="chayyanjutt81@gmail.com"
-                />
-                <input
-                  type="hidden"
-                  name="transaction_id"
-                  value={transactionId}
-                />
-                <input
-                  type="hidden"
-                  name="amount"
-                  value={item.price.toFixed(2)}
-                />
-                <input type="hidden" name="currency" value="USD" />
-                <input type="hidden" name="language" value="EN" />
-
-                <input
-                  type="hidden"
-                  name="detail1_description"
-                  value="Item"
-                />
-                <input
-                  type="hidden"
-                  name="detail1_text"
-                  value={itemName.substring(0, 90)}
-                />
-
-                <input type="hidden" name="return_url" value={returnUrl} />
-                <input type="hidden" name="cancel_url" value={cancelUrl} />
-
-                <button
-                  type="submit"
-                  className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-blue-700"
-                >
-                  Pay with Skrill <ExternalLink size={18} />
-                </button>
-              </form>
+          {/* Payoneer Instructions */}
+          <div className="bg-slate-50 border rounded-2xl p-6 mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldCheck className="text-blue-600" />
+              <h3 className="font-bold">Pay via Payoneer</h3>
             </div>
-          )}
+
+            <ul className="text-sm text-slate-600 space-y-2">
+              <li className="flex gap-2">
+                <Check size={16} className="text-green-600 mt-1" />
+                Login to your Payoneer account
+              </li>
+              <li className="flex gap-2">
+                <Check size={16} className="text-green-600 mt-1" />
+                Send <b>${item.price.toFixed(2)}</b> to my Payoneer email
+              </li>
+              <li className="flex gap-2">
+                <Check size={16} className="text-green-600 mt-1" />
+                Use item name as payment note
+              </li>
+            </ul>
+
+            <p className="mt-4 text-sm">
+              <b>Payoneer Email:</b>{" "}
+              <span className="text-blue-600 font-semibold">
+                ayyanulhaq997@gmail.com
+              </span>
+            </p>
+          </div>
+
+          {/* Confirmation */}
+          <Link
+            to={`/checkout?success=true&id=${itemId}`}
+            className="block w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-center hover:bg-blue-700"
+          >
+            I Have Paid (Confirm)
+          </Link>
+
+          <p className="text-xs text-center text-slate-400 mt-4">
+            Payments are manually verified for security
+          </p>
         </div>
       </div>
     </div>
