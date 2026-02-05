@@ -6,14 +6,15 @@ import {
   PlusCircle, 
   LogOut, 
   Image as ImageIcon,
-  Trash2,
+  Trash2, 
   Lock,
   ShoppingCart,
   Layers,
   TrendingUp,
   CheckCircle,
   FileText,
-  AlignLeft
+  AlignLeft,
+  Type
 } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { Category } from '../types';
@@ -30,7 +31,7 @@ const AdminDashboard = () => {
   const [newArticle, setNewArticle] = useState({
     title: '',
     excerpt: '',
-    introText: '', // State for the new intro box
+    introText: '',
     content: '',
     category: Category.Serverless,
     price: 45,
@@ -200,42 +201,74 @@ const AdminDashboard = () => {
               <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm">
                 <h3 className="text-2xl font-black mb-8 flex items-center gap-3"><PlusCircle className="text-blue-600" /> New Tech Post</h3>
                 <form onSubmit={handleAddArticle} className="space-y-6">
+                  {/* Title and Category Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Title</label>
-                      <input required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.title} onChange={e => setNewArticle({...newArticle, title: e.target.value})} />
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Article Title</label>
+                      <input required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.title} onChange={e => setNewArticle({...newArticle, title: e.target.value})} placeholder="Mastering Cloud Computing" />
                     </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Category</label>
+                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.category} onChange={e => setNewArticle({...newArticle, category: e.target.value as any})}>
+                        {Object.values(Category).map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Price and Image Link Row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-400 uppercase ml-1">Price (USD)</label>
                       <input type="number" className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.price} onChange={e => setNewArticle({...newArticle, price: Number(e.target.value)})} />
                     </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Image Link</label>
+                      <input required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.image} onChange={e => setNewArticle({...newArticle, image: e.target.value})} placeholder="https://unsplash.com/..." />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Image Link</label>
-                    <input required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.image} onChange={e => setNewArticle({...newArticle, image: e.target.value})} placeholder="https://unsplash.com/..." />
-                  </div>
+
+                  {/* Excerpt (Summary for Blog List) */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1 flex items-center gap-1">
-                      <AlignLeft size={14} className="text-blue-500" /> Article Intro Box (Highlighted Preamble)
+                      <Type size={14} className="text-blue-500" /> Short Excerpt (Summary for List View)
                     </label>
-                    <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.introText} onChange={e => setNewArticle({...newArticle, introText: e.target.value})} placeholder="Write a few key takeaway sentences or an intro to show in a highlighted box..." />
+                    <textarea rows={2} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.excerpt} onChange={e => setNewArticle({...newArticle, excerpt: e.target.value})} placeholder="A quick summary that shows below the title on the Blog page..." />
                   </div>
+
+                  {/* Intro Preamble Box */}
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Content Body</label>
-                    <textarea rows={8} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" value={newArticle.content} onChange={e => setNewArticle({...newArticle, content: e.target.value})} />
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1 flex items-center gap-1">
+                      <AlignLeft size={14} className="text-blue-500" /> Intro Box (Highlighted Lines Before Content)
+                    </label>
+                    <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.introText} onChange={e => setNewArticle({...newArticle, introText: e.target.value})} placeholder="Special highlighted text that appears right below the title in the full post..." />
                   </div>
+
+                  {/* Main Content Body */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Main Content Body</label>
+                    <textarea rows={10} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" value={newArticle.content} onChange={e => setNewArticle({...newArticle, content: e.target.value})} placeholder="Full technical details go here..." />
+                  </div>
+
                   <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-100">Publish Article</button>
                 </form>
               </div>
             </div>
+
             <div className="space-y-6">
               <h3 className="font-black text-slate-400 uppercase text-xs tracking-widest ml-4">Live Inventory</h3>
-              <div className="space-y-4 max-h-[800px] overflow-y-auto pr-2">
+              <div className="space-y-4 max-h-[1200px] overflow-y-auto pr-2 custom-scrollbar">
                 {allArticles.slice().reverse().map((a: any) => (
-                  <div key={a.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
+                  <div key={a.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4 group">
                     <img src={a.image} className="w-12 h-12 rounded-xl object-cover" alt="" />
-                    <div className="flex-grow"><p className="font-bold text-slate-900 text-sm line-clamp-1">{a.title}</p><p className="text-[10px] text-blue-600 font-black">${a.price}</p></div>
-                    {a.id.startsWith('art-') && <button onClick={() => deleteArticle(a.id)} className="p-2 text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>}
+                    <div className="flex-grow">
+                      <p className="font-bold text-slate-900 text-sm line-clamp-1">{a.title}</p>
+                      <p className="text-[10px] text-blue-600 font-black tracking-tight uppercase">{a.category} • ${a.price}</p>
+                    </div>
+                    {a.id.startsWith('art-') && (
+                      <button onClick={() => deleteArticle(a.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
