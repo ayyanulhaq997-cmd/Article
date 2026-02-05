@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, Github, Linkedin, Twitter, Mail, ExternalLink, Lock } from 'lucide-react';
+import { Menu, X, Github, Linkedin, Twitter, Mail, ExternalLink } from 'lucide-react';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = React.useState(false);
@@ -101,9 +101,7 @@ const Footer = () => (
             >
               <Linkedin size={20} />
             </a>
-            <a href="#" className="hover:text-blue-400 transition-colors"><Twitter size={20} /></a>
-            <a href="#" className="hover:text-blue-400 transition-colors"><Github size={20} /></a>
-            <a href="mailto:zolly9130@gmail.com" className="hover:text-blue-400 transition-colors"><Mail size={20} /></a>
+            <a href="#" className="hover:text-blue-400 transition-colors"><Mail size={20} /></a>
           </div>
         </div>
         <div>
@@ -121,18 +119,12 @@ const Footer = () => (
             <li><Link to="/blog" className="hover:text-white transition-colors">Serverless</Link></li>
             <li><Link to="/blog" className="hover:text-white transition-colors">SaaS</Link></li>
             <li><Link to="/blog" className="hover:text-white transition-colors">Cloud Computing</Link></li>
-            <li><Link to="/blog" className="hover:text-white transition-colors">Tech Tips</Link></li>
           </ul>
         </div>
       </div>
-      <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-sm">
-        <div className="flex flex-col gap-2">
-          <p>&copy; {new Date().getFullYear()} Ayyan u l Haq. All rights reserved.</p>
-          <Link to="/admin" className="text-slate-600 hover:text-slate-400 flex items-center gap-1.5 transition-colors">
-            <Lock size={12} /> Admin Login
-          </Link>
-        </div>
-        <p className="mt-4 md:mt-0 text-slate-500">Designed for modern tech entrepreneurs.</p>
+      <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
+        <p>&copy; {new Date().getFullYear()} Ayyan u l Haq. All rights reserved.</p>
+        <p className="mt-4 md:mt-0 italic opacity-50">Premium Tech Content Ecosystem</p>
       </div>
     </div>
   </footer>
