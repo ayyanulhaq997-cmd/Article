@@ -5,18 +5,18 @@ import {
   DollarSign, 
   PlusCircle, 
   LogOut, 
-  Image as ImageIcon,
   Trash2, 
   Lock,
   ShoppingCart,
   Layers,
   TrendingUp,
   CheckCircle,
-  FileText,
   AlignLeft,
   Type,
-  Code,
-  Copy
+  Copy,
+  Globe,
+  AlertTriangle,
+  Send
 } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { Category } from '../types';
@@ -88,7 +88,7 @@ const AdminDashboard = () => {
       image: '',
       isPLR: true
     });
-    alert('Article published to Local Storage! To make it visible to everyone, use the "Copy Code" button and send it to your developer.');
+    alert('SUCCESS: Article saved to your local list! To make it visible to OTHER users, please use the "Publish Globally" sync button in the inventory list.');
   };
 
   const deleteArticle = (id: string) => {
@@ -100,10 +100,10 @@ const AdminDashboard = () => {
     }
   };
 
-  const copyArticleCode = (article: any) => {
+  const publishGlobally = (article: any) => {
     const code = JSON.stringify(article, null, 2);
     navigator.clipboard.writeText(code);
-    alert('Article code copied! Paste this into your chat with the developer to make this article permanent for all users.');
+    alert('PUBLISH READY: The data for this article has been copied to your clipboard. \n\nSend this to Ayyan (the developer) and he will update the website so EVERYONE can see it permanently.');
   };
 
   if (!isLoggedIn) {
@@ -137,8 +137,7 @@ const AdminDashboard = () => {
   }
 
   const totalRevenue = sales.reduce((acc, sale) => acc + sale.price, 0);
-  const soldArticleIds = new Set(sales.map(s => s.id));
-  const soldCount = soldArticleIds.size;
+  const soldCount = new Set(sales.map(s => s.id)).size;
   const unsoldCount = allArticles.length - soldCount;
 
   return (
@@ -166,15 +165,20 @@ const AdminDashboard = () => {
       <main className="flex-grow p-8 lg:p-12 overflow-y-auto">
         {activeTab === 'overview' && (
           <div className="space-y-12 max-w-6xl mx-auto">
-            <header>
-              <h1 className="text-4xl font-black text-slate-900">Platform Health</h1>
-              <p className="text-slate-500 font-medium">Real-time status of your tech writing business.</p>
+            <header className="flex justify-between items-end">
+              <div>
+                <h1 className="text-4xl font-black text-slate-900">Platform Health</h1>
+                <p className="text-slate-500 font-medium">Real-time status of your tech writing business.</p>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 rounded-xl text-xs font-bold border border-amber-100">
+                <AlertTriangle size={14} /> Local Storage Mode Active
+              </div>
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center gap-6">
                 <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><DollarSign size={32} /></div>
-                <div><p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Earnings</p><h3 className="text-3xl font-black text-slate-900">${totalRevenue.toFixed(2)}</h3></div>
+                <div><p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Total Earnings</p><h3 className="text-3xl font-black text-slate-900">${totalRevenue.toFixed(2)}</h3></div>
               </div>
               <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center gap-6">
                 <div className="w-16 h-16 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center"><CheckCircle size={32} /></div>
@@ -182,7 +186,7 @@ const AdminDashboard = () => {
               </div>
               <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center gap-6">
                 <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center"><Layers size={32} /></div>
-                <div><p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Not Sold</p><h3 className="text-3xl font-black text-slate-900">{unsoldCount < 0 ? 0 : unsoldCount}</h3></div>
+                <div><p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Inventory</p><h3 className="text-3xl font-black text-slate-900">{allArticles.length}</h3></div>
               </div>
             </div>
 
@@ -216,7 +220,7 @@ const AdminDashboard = () => {
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-400 uppercase ml-1">Category</label>
-                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.category} onChange={e => setNewArticle({...newArticle, category: e.target.value as any})}>
+                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" value={newArticle.category} onChange={e => setNewArticle({...newArticle, category: e.target.value as any})}>
                         {Object.values(Category).map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
@@ -228,56 +232,68 @@ const AdminDashboard = () => {
                       <input type="number" className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.price} onChange={e => setNewArticle({...newArticle, price: Number(e.target.value)})} />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Image Link</label>
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Image Link (Unsplash)</label>
                       <input required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.image} onChange={e => setNewArticle({...newArticle, image: e.target.value})} placeholder="https://unsplash.com/..." />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1 flex items-center gap-1">
-                      <Type size={14} className="text-blue-500" /> Short Excerpt (Summary for List View)
+                      <Type size={14} className="text-blue-500" /> Short Excerpt (Shows on Blog Page)
                     </label>
                     <textarea rows={2} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.excerpt} onChange={e => setNewArticle({...newArticle, excerpt: e.target.value})} placeholder="A quick summary that shows below the title on the Blog page..." />
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1 flex items-center gap-1">
-                      <AlignLeft size={14} className="text-blue-500" /> Intro Box (Highlighted Lines Before Content)
+                      <AlignLeft size={14} className="text-blue-500" /> Intro Box (Preamble lines)
                     </label>
-                    <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.introText} onChange={e => setNewArticle({...newArticle, introText: e.target.value})} placeholder="Special highlighted text that appears right below the title in the full post..." />
+                    <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.introText} onChange={e => setNewArticle({...newArticle, introText: e.target.value})} placeholder="Special highlighted text before the main content starts..." />
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Main Content Body</label>
-                    <textarea rows={10} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" value={newArticle.content} onChange={e => setNewArticle({...newArticle, content: e.target.value})} placeholder="Full technical details go here..." />
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Main Article Content</label>
+                    <textarea rows={10} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" value={newArticle.content} onChange={e => setNewArticle({...newArticle, content: e.target.value})} placeholder="Write the full technical article here..." />
                   </div>
 
-                  <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-100">Publish Article</button>
+                  <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-100">Add to Local List</button>
                 </form>
               </div>
             </div>
 
             <div className="space-y-6">
-              <h3 className="font-black text-slate-400 uppercase text-xs tracking-widest ml-4">Live Inventory</h3>
+              <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100">
+                 <h4 className="text-sm font-black text-blue-700 uppercase mb-2 flex items-center gap-2"><Globe size={16}/> Global Sync Center</h4>
+                 <p className="text-xs text-blue-600/80 leading-relaxed mb-4 font-medium">Articles marked "Local Only" are invisible to other users. Use the sync button to prepare them for global publishing.</p>
+              </div>
+              
+              <h3 className="font-black text-slate-400 uppercase text-xs tracking-widest ml-4">Article Inventory</h3>
               <div className="space-y-4 max-h-[1200px] overflow-y-auto pr-2 custom-scrollbar">
                 {allArticles.slice().reverse().map((a: any) => (
                   <div key={a.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4 group">
-                    <img src={a.image} className="w-12 h-12 rounded-xl object-cover" alt="" />
+                    <img src={a.image || 'https://picsum.photos/seed/tech/100'} className="w-12 h-12 rounded-xl object-cover" alt="" />
                     <div className="flex-grow">
                       <p className="font-bold text-slate-900 text-sm line-clamp-1">{a.title}</p>
-                      <p className="text-[10px] text-blue-600 font-black tracking-tight uppercase">{a.category} • ${a.price}</p>
+                      <div className="flex items-center gap-2">
+                         <p className="text-[10px] text-blue-600 font-black tracking-tight uppercase">{a.category}</p>
+                         {a.id.startsWith('art-') ? (
+                           <span className="text-[8px] bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded font-black uppercase">Local Only</span>
+                         ) : (
+                           <span className="text-[8px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded font-black uppercase">Live</span>
+                         )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       {a.id.startsWith('art-') && (
                         <>
                           <button 
-                            onClick={() => copyArticleCode(a)} 
-                            className="p-2 text-slate-300 hover:text-blue-500 transition-colors" 
-                            title="Copy code for developer to publish permanently"
+                            onClick={() => publishGlobally(a)} 
+                            className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" 
+                            title="Publish Globally (Sync with Developer)"
                           >
-                            <Copy size={16} />
+                            <Send size={16} />
                           </button>
-                          <button onClick={() => deleteArticle(a.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                          <button onClick={() => deleteArticle(a.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
                             <Trash2 size={16} />
                           </button>
                         </>
@@ -301,7 +317,6 @@ const AdminDashboard = () => {
                  <thead>
                    <tr className="border-b border-slate-100 font-black text-xs text-slate-400 uppercase tracking-widest">
                      <th className="pb-4">Date</th>
-                     <th className="pb-4">Order ID</th>
                      <th className="pb-4">Item</th>
                      <th className="pb-4 text-right">Revenue</th>
                    </tr>
@@ -310,7 +325,6 @@ const AdminDashboard = () => {
                    {sales.slice().reverse().map((sale, i) => (
                      <tr key={i} className="hover:bg-slate-50 transition-colors">
                        <td className="py-6 text-slate-500">{new Date(sale.timestamp).toLocaleDateString()}</td>
-                       <td className="py-6 font-mono text-slate-400 font-bold">{sale.orderId || 'N/A'}</td>
                        <td className="py-6 font-bold text-slate-900">{sale.name}</td>
                        <td className="py-6 font-black text-green-600 text-right">+${sale.price.toFixed(2)}</td>
                      </tr>
