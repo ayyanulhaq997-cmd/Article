@@ -21,7 +21,9 @@ import {
   Code,
   Key,
   Save,
-  RefreshCw
+  RefreshCw,
+  Info,
+  XCircle
 } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { Category, Article } from '../types';
@@ -40,6 +42,7 @@ const AdminDashboard = () => {
   
   const [manualUrl, setManualUrl] = useState('');
   const [manualKey, setManualKey] = useState('');
+  const [testResult, setTestResult] = useState<{success?: boolean, message: string} | null>(null);
 
   const [newArticle, setNewArticle] = useState({
     title: '',
@@ -59,7 +62,6 @@ const AdminDashboard = () => {
     const cloudArticles = await db.getAllArticles();
     
     if (db.isConfigured()) {
-      // If configured, we verify it works by trying to fetch
       setDbStatus(cloudArticles.length >= 0 ? 'online' : 'offline');
     } else {
       setDbStatus('offline');
@@ -85,8 +87,18 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleTestConnection = async () => {
+    setTestResult({ message: 'Testing connection...' });
+    const res = await db.testConnection();
+    setTestResult(res);
+  };
+
   const handleSaveCredentials = (e: React.FormEvent) => {
     e.preventDefault();
+    if (manualUrl.includes('postgres://')) {
+      alert("WARNING: You are using a PostgreSQL connection string instead of the PROJECT URL. Please use the URL starting with https:// from the Supabase 'API' settings page.");
+      return;
+    }
     db.setManualCredentials(manualUrl, manualKey);
   };
 
@@ -111,7 +123,7 @@ const AdminDashboard = () => {
       });
       loadData();
     } else {
-      alert('CONNECTION ERROR: Key/URL might be incorrect. Article saved locally for now.');
+      alert('CLOUD SYNC FAILED: Key/URL might be incorrect. Saved to local browser storage.');
       const currentLocal = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
       localStorage.setItem('ayyan_articles', JSON.stringify([...currentLocal, articleToSave]));
       loadData();
@@ -195,10 +207,10 @@ const AdminDashboard = () => {
               <div className="bg-amber-50 border border-amber-200 rounded-[2.5rem] p-10 flex flex-col md:flex-row gap-8 items-center">
                 <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-3xl flex items-center justify-center shrink-0"><AlertTriangle size={40} /></div>
                 <div>
-                  <h3 className="text-xl font-black text-amber-900 mb-2 uppercase tracking-tight">Database Not Connected</h3>
-                  <p className="text-amber-800 text-sm mb-6 max-w-xl">The app cannot find your Supabase credentials in the environment variables. You must enter them manually in the settings to enable cloud syncing.</p>
+                  <h3 className="text-xl font-black text-amber-900 mb-2 uppercase tracking-tight">Database Connectivity Warning</h3>
+                  <p className="text-amber-800 text-sm mb-6 max-w-xl">Your cloud database is currently unreachable. You are working in <b>Local Offline Mode</b>. Any articles you publish now will only be visible in this browser until you fix the connection.</p>
                   <button onClick={() => setActiveTab('settings')} className="px-6 py-3 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition-all flex items-center gap-2 text-sm shadow-lg shadow-amber-200">
-                    <Key size={16} /> Enter Credentials Manually
+                    <Settings size={16} /> Troubleshoot Cloud Connection
                   </button>
                 </div>
               </div>
@@ -209,34 +221,67 @@ const AdminDashboard = () => {
         {activeTab === 'settings' && (
           <div className="max-w-4xl mx-auto space-y-10">
              <header>
-               <h1 className="text-3xl font-black text-slate-900 mb-2">Database Configuration</h1>
-               <p className="text-slate-500">Bridge the gap between your app and Supabase cloud.</p>
+               <h1 className="text-3xl font-black text-slate-900 mb-2">Cloud Configuration</h1>
+               <p className="text-slate-500">Ensure your project is properly connected to Supabase.</p>
              </header>
 
-             <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm space-y-8">
+             <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm space-y-10">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                   <div className="space-y-6">
-                    <h3 className="font-bold flex items-center gap-2"><Key className="text-blue-600" size={20}/> Manual Entry</h3>
-                    <p className="text-xs text-slate-500">If your .env is not working, paste your keys here. These will be saved securely in your browser's local storage.</p>
-                    <form onSubmit={handleSaveCredentials} className="space-y-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Project URL</label>
-                        <input value={manualUrl} onChange={e => setManualUrl(e.target.value)} required placeholder="https://xyz.supabase.co" className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-xs font-mono" />
+                    <h3 className="font-bold flex items-center gap-2 text-blue-600"><Key size={20}/> Connection Details</h3>
+                    <form onSubmit={handleSaveCredentials} className="space-y-5">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Project URL (API Settings)</label>
+                        <input value={manualUrl} onChange={e => setManualUrl(e.target.value)} required placeholder="https://abc.supabase.co" className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-xs font-mono" />
+                        {manualUrl.startsWith('postgres') && <p className="text-[10px] text-red-500 font-bold flex items-center gap-1"><XCircle size={10}/> THIS IS A CONNECTION STRING, NOT A URL!</p>}
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Anon Key</label>
-                        <input value={manualKey} onChange={e => setManualKey(e.target.value)} required type="password" placeholder="Supabase Public Anon Key" className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-xs font-mono" />
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Anon Key (Public Key)</label>
+                        <input value={manualKey} onChange={e => setManualKey(e.target.value)} required type="password" placeholder="The long JWT string..." className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 text-xs font-mono" />
                       </div>
-                      <button type="submit" className="w-full py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100">
-                        <Save size={18}/> Save & Refresh
-                      </button>
+                      <div className="flex gap-2">
+                        <button type="submit" className="flex-grow py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-100">
+                          <Save size={18}/> Update Credentials
+                        </button>
+                        <button type="button" onClick={() => db.clearCredentials()} className="px-4 py-4 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 transition-all border border-red-100">
+                          <Trash2 size={18}/>
+                        </button>
+                      </div>
                     </form>
                   </div>
 
                   <div className="space-y-6">
-                    <h3 className="font-bold flex items-center gap-2"><Code className="text-indigo-600" size={20}/> Required Table SQL</h3>
-                    <p className="text-xs text-slate-500">Run this in your Supabase SQL Editor to prepare your database.</p>
-                    <div className="bg-slate-900 p-4 rounded-2xl text-[10px] text-blue-300 font-mono overflow-auto max-h-48 border border-slate-800">
+                    <h3 className="font-bold flex items-center gap-2 text-emerald-600"><Globe size={20}/> Status & Tools</h3>
+                    <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
+                        <button onClick={handleTestConnection} className="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm hover:bg-slate-50 transition-all flex items-center justify-center gap-2 shadow-sm">
+                          <RefreshCw size={16} /> Run Diagnostic Test
+                        </button>
+
+                        {testResult && (
+                          <div className={`p-4 rounded-xl text-xs font-bold border flex items-center gap-3 ${testResult.success ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
+                            {testResult.success ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+                            {testResult.message}
+                          </div>
+                        )}
+                        
+                        <div className="pt-4 border-t border-slate-200">
+                           <h4 className="text-[10px] font-black text-slate-400 uppercase mb-2">Setup Guide</h4>
+                           <ul className="text-[10px] space-y-1 text-slate-500 font-medium">
+                             <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-500 rounded-full"></div> Go to Project Settings > API</li>
+                             <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-500 rounded-full"></div> Copy "Project URL" (Starts with https)</li>
+                             <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-500 rounded-full"></div> Copy "anon public" key</li>
+                           </ul>
+                        </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-8 bg-blue-50 border border-blue-100 rounded-[2rem] flex items-start gap-4">
+                  <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-blue-200"><Info size={24}/></div>
+                  <div>
+                    <h4 className="text-blue-900 font-black text-sm uppercase mb-1">Common Troubleshooting</h4>
+                    <p className="text-xs text-blue-800 leading-relaxed mb-4">"Invalid Credentials" usually happens if you copy the <b>PostgreSQL URL</b> instead of the <b>Project URL</b>. If the connection test fails with "Table not found", you must run the SQL code below in your Supabase dashboard.</p>
+                    <div className="bg-slate-900 p-4 rounded-2xl text-[9px] text-blue-300 font-mono overflow-auto max-h-40 border border-slate-800">
                       <pre>{`CREATE TABLE articles (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
@@ -250,20 +295,6 @@ const AdminDashboard = () => {
 ALTER TABLE articles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public Read" ON articles FOR SELECT USING (true);
 CREATE POLICY "Public Write" ON articles FOR INSERT WITH CHECK (true);`}</pre>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="pt-8 border-t border-slate-50">
-                  <h4 className="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">Active Connection Status</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                      <p className="text-[10px] text-slate-400 font-bold mb-1">URL</p>
-                      <p className="text-xs font-mono text-slate-900 truncate">{configs.url}</p>
-                    </div>
-                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                      <p className="text-[10px] text-slate-400 font-bold mb-1">ANON KEY</p>
-                      <p className="text-xs font-mono text-slate-900">{configs.key}</p>
                     </div>
                   </div>
                 </div>
@@ -290,7 +321,7 @@ CREATE POLICY "Public Write" ON articles FOR INSERT WITH CHECK (true);`}</pre>
                   <textarea rows={2} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-sm" value={newArticle.excerpt} onChange={e => setNewArticle({...newArticle, excerpt: e.target.value})} placeholder="Short summary..." />
                   <textarea rows={10} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-mono text-sm" value={newArticle.content} onChange={e => setNewArticle({...newArticle, content: e.target.value})} placeholder="Article Content (Markdown allowed)..." />
                   <button type="submit" disabled={isSyncing} className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-xl disabled:opacity-50">
-                    {isSyncing ? <Loader2 className="animate-spin" /> : <Globe size={20} />} Publish to Cloud
+                    {isSyncing ? <Loader2 className="animate-spin" /> : <Globe size={20} />} Publish Globally
                   </button>
                 </form>
               </div>
