@@ -14,7 +14,9 @@ import {
   CheckCircle,
   FileText,
   AlignLeft,
-  Type
+  Type,
+  Code,
+  Copy
 } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { Category } from '../types';
@@ -86,7 +88,7 @@ const AdminDashboard = () => {
       image: '',
       isPLR: true
     });
-    alert('Article published successfully!');
+    alert('Article published to Local Storage! To make it visible to everyone, use the "Copy Code" button and send it to your developer.');
   };
 
   const deleteArticle = (id: string) => {
@@ -96,6 +98,12 @@ const AdminDashboard = () => {
       localStorage.setItem('ayyan_articles', JSON.stringify(updated));
       setAllArticles([...ARTICLES, ...updated]);
     }
+  };
+
+  const copyArticleCode = (article: any) => {
+    const code = JSON.stringify(article, null, 2);
+    navigator.clipboard.writeText(code);
+    alert('Article code copied! Paste this into your chat with the developer to make this article permanent for all users.');
   };
 
   if (!isLoggedIn) {
@@ -201,7 +209,6 @@ const AdminDashboard = () => {
               <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm">
                 <h3 className="text-2xl font-black mb-8 flex items-center gap-3"><PlusCircle className="text-blue-600" /> New Tech Post</h3>
                 <form onSubmit={handleAddArticle} className="space-y-6">
-                  {/* Title and Category Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-400 uppercase ml-1">Article Title</label>
@@ -215,7 +222,6 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Price and Image Link Row */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-400 uppercase ml-1">Price (USD)</label>
@@ -227,7 +233,6 @@ const AdminDashboard = () => {
                     </div>
                   </div>
 
-                  {/* Excerpt (Summary for Blog List) */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1 flex items-center gap-1">
                       <Type size={14} className="text-blue-500" /> Short Excerpt (Summary for List View)
@@ -235,7 +240,6 @@ const AdminDashboard = () => {
                     <textarea rows={2} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.excerpt} onChange={e => setNewArticle({...newArticle, excerpt: e.target.value})} placeholder="A quick summary that shows below the title on the Blog page..." />
                   </div>
 
-                  {/* Intro Preamble Box */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1 flex items-center gap-1">
                       <AlignLeft size={14} className="text-blue-500" /> Intro Box (Highlighted Lines Before Content)
@@ -243,7 +247,6 @@ const AdminDashboard = () => {
                     <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.introText} onChange={e => setNewArticle({...newArticle, introText: e.target.value})} placeholder="Special highlighted text that appears right below the title in the full post..." />
                   </div>
 
-                  {/* Main Content Body */}
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1">Main Content Body</label>
                     <textarea rows={10} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" value={newArticle.content} onChange={e => setNewArticle({...newArticle, content: e.target.value})} placeholder="Full technical details go here..." />
@@ -264,11 +267,22 @@ const AdminDashboard = () => {
                       <p className="font-bold text-slate-900 text-sm line-clamp-1">{a.title}</p>
                       <p className="text-[10px] text-blue-600 font-black tracking-tight uppercase">{a.category} • ${a.price}</p>
                     </div>
-                    {a.id.startsWith('art-') && (
-                      <button onClick={() => deleteArticle(a.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
-                        <Trash2 size={16} />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {a.id.startsWith('art-') && (
+                        <>
+                          <button 
+                            onClick={() => copyArticleCode(a)} 
+                            className="p-2 text-slate-300 hover:text-blue-500 transition-colors" 
+                            title="Copy code for developer to publish permanently"
+                          >
+                            <Copy size={16} />
+                          </button>
+                          <button onClick={() => deleteArticle(a.id)} className="p-2 text-slate-300 hover:text-red-500 transition-colors">
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
