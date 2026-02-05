@@ -49,11 +49,8 @@ const AdminDashboard = () => {
     setIsSyncing(true);
     const cloudArticles = await db.getAllArticles();
     
-    // Check if cloud works with provided keys
-    const hasUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const hasKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
-
-    if (hasUrl && hasKey) {
+    // Check if cloud works with the helper
+    if (db.isConfigured()) {
       setDbStatus('online');
     } else {
       setDbStatus('offline');
@@ -112,10 +109,10 @@ const AdminDashboard = () => {
       });
       loadData();
     } else {
-      // Fallback to local storage if DB keys are missing or request fails
+      // Fallback to local storage
       const currentLocal = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
       localStorage.setItem('ayyan_articles', JSON.stringify([...currentLocal, articleToSave]));
-      alert('LOCAL ONLY: Cloud sync failed or credentials missing. Article saved to your browser only.');
+      alert('LOCAL ONLY: Cloud sync failed. Ensure your Supabase keys are correct and the "articles" table is created. Article saved to your browser locally for now.');
       loadData();
     }
     setIsSyncing(false);
@@ -302,11 +299,11 @@ const AdminDashboard = () => {
             <div className="space-y-6">
               <div className="bg-slate-900 p-6 rounded-3xl text-white">
                  <h4 className="text-sm font-black text-blue-400 uppercase mb-2 flex items-center gap-2 tracking-widest"><Settings size={16}/> Sync Status</h4>
-                 <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                 <div className="text-xs text-slate-400 leading-relaxed font-medium">
                    {dbStatus === 'online' 
-                    ? "Live Cloud Database is active. Every article you publish here is visible to the entire world instantly." 
-                    : "No Cloud DB detected. Articles are being stored locally in your browser. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set."}
-                 </p>
+                    ? <p className="text-green-400">Live Cloud Database is active. Every article you publish here is visible to the entire world instantly.</p>
+                    : <p className="text-amber-400">No Cloud DB detected. Articles are being stored locally in your browser. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env file and that your server is restarted.</p>}
+                 </div>
               </div>
               
               <h3 className="font-black text-slate-400 uppercase text-xs tracking-widest ml-4">Global Inventory</h3>
