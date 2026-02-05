@@ -12,14 +12,14 @@ import {
   Layers,
   TrendingUp,
   CheckCircle,
-  FileText
+  FileText,
+  AlignLeft
 } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { Category } from '../types';
 import SEO from '../components/SEO';
 
 const AdminDashboard = () => {
-  // Use sessionStorage so closing the tab logs you out for better privacy
   const [isLoggedIn, setIsLoggedIn] = useState(() => sessionStorage.getItem('ayyan_admin_auth') === 'true');
   const [key, setKey] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'articles' | 'sales'>('overview');
@@ -30,6 +30,7 @@ const AdminDashboard = () => {
   const [newArticle, setNewArticle] = useState({
     title: '',
     excerpt: '',
+    introText: '', // State for the new intro box
     content: '',
     category: Category.Serverless,
     price: 45,
@@ -77,6 +78,7 @@ const AdminDashboard = () => {
     setNewArticle({
       title: '',
       excerpt: '',
+      introText: '',
       content: '',
       category: Category.Serverless,
       price: 45,
@@ -211,6 +213,12 @@ const AdminDashboard = () => {
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1">Image Link</label>
                     <input required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.image} onChange={e => setNewArticle({...newArticle, image: e.target.value})} placeholder="https://unsplash.com/..." />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1 flex items-center gap-1">
+                      <AlignLeft size={14} className="text-blue-500" /> Article Intro Box (Highlighted Preamble)
+                    </label>
+                    <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.introText} onChange={e => setNewArticle({...newArticle, introText: e.target.value})} placeholder="Write a few key takeaway sentences or an intro to show in a highlighted box..." />
                   </div>
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1">Content Body</label>

@@ -5,21 +5,11 @@ import {
   ArrowLeft, 
   Clock, 
   Calendar, 
-  Share2, 
   ShoppingCart, 
   Sparkles, 
-  Twitter, 
-  Linkedin, 
-  Facebook, 
-  Copy, 
-  Check, 
-  Type, 
   Plus, 
-  Minus, 
-  RefreshCcw,
-  MessageCircle,
-  Mail,
-  Link as LinkIcon
+  Minus,
+  Quote
 } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { getArticleSummary } from '../geminiService';
@@ -29,7 +19,6 @@ const ArticleDetailPage = () => {
   const { id } = useParams();
   const [summary, setSummary] = useState<string | null>(null);
   const [isSummarizing, setIsSummarizing] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [fontSize, setFontSize] = useState(18);
   const [article, setArticle] = useState<any>(null);
   
@@ -51,22 +40,6 @@ const ArticleDetailPage = () => {
     const res = await getArticleSummary(article.excerpt + " " + article.content);
     setSummary(res);
     setIsSummarizing(false);
-  };
-
-  const shareUrl = window.location.href;
-  const shareTitle = article.title;
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(shareUrl);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const shareLinks = {
-    twitter: `https://twitter.com/intent/tweet?text=${encodeURIComponent(`${shareTitle}\n\n`)}&url=${encodeURIComponent(shareUrl)}`,
-    linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`,
-    facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`,
-    email: `mailto:?subject=${encodeURIComponent(shareTitle)}&body=${encodeURIComponent(shareUrl)}`,
   };
 
   return (
@@ -106,8 +79,23 @@ const ArticleDetailPage = () => {
             </div>
 
             {summary && (
-              <div className="p-6 bg-indigo-50 border border-indigo-100 rounded-2xl text-sm italic text-indigo-900">
+              <div className="p-6 bg-indigo-50 border border-indigo-100 rounded-2xl text-sm italic text-indigo-900 animate-in fade-in slide-in-from-top-4">
                 "{summary}"
+              </div>
+            )}
+
+            {/* NEW INTRO BOX */}
+            {article.introText && (
+              <div className="bg-slate-50 border-l-4 border-blue-600 p-8 rounded-r-2xl shadow-sm relative overflow-hidden group">
+                <div className="absolute top-4 right-4 text-blue-100 group-hover:text-blue-200 transition-colors">
+                  <Quote size={40} />
+                </div>
+                <div className="relative z-10">
+                  <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3">Article Insight</h4>
+                  <p className="text-slate-800 font-medium leading-relaxed italic">
+                    {article.introText}
+                  </p>
+                </div>
               </div>
             )}
 

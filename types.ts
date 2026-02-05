@@ -11,6 +11,7 @@ export interface Article {
   title: string;
   excerpt: string;
   content: string;
+  introText?: string; // New field for the highlighted box
   category: Category;
   date: string;
   readTime: string;
