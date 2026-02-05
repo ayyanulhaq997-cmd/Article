@@ -2,36 +2,68 @@
 import { Article } from './types';
 
 /**
+ * SQL SCHEMA FOR SUPABASE
+ * -----------------------
+ * Run this in your Supabase SQL Editor (https://supabase.com/dashboard/project/_/sql):
+ * 
+ * CREATE TABLE articles (
+ *   id TEXT PRIMARY KEY,
+ *   title TEXT NOT NULL,
+ *   excerpt TEXT,
+ *   introText TEXT,
+ *   content TEXT,
+ *   category TEXT,
+ *   date TEXT,
+ *   readTime TEXT,
+ *   image TEXT,
+ *   price NUMERIC,
+ *   isPLR BOOLEAN DEFAULT true
+ * );
+ * 
+ * -- Enable Row Level Security
+ * ALTER TABLE articles ENABLE ROW LEVEL SECURITY;
+ * 
+ * -- Create access policies
+ * CREATE POLICY "Public read access" ON articles FOR SELECT USING (true);
+ * CREATE POLICY "Authenticated insert access" ON articles FOR INSERT WITH CHECK (true);
+ * CREATE POLICY "Authenticated delete access" ON articles FOR DELETE USING (true);
+ */
+
+/**
  * Robust environment variable helper
- * Checks Vite, Process, and Window globals
  */
 const getEnv = (key: string): string => {
-  try {
-    const meta = import.meta as any;
-    if (meta.env && meta.env[key]) return meta.env[key];
-  } catch {}
+  const keysToTry = [key, `VITE_${key}`, key.replace('VITE_', '')];
+  
+  for (const k of keysToTry) {
+    try {
+      // 1. Try Vite's method
+      const meta = import.meta as any;
+      if (meta.env && meta.env[k]) return meta.env[k];
+    } catch {}
 
-  try {
-    if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
-  } catch {}
+    try {
+      // 2. Try Process (Node/CI)
+      if (typeof process !== 'undefined' && process.env && process.env[k]) return process.env[k];
+    } catch {}
 
-  try {
-    const win = window as any;
-    if (win[key]) return win[key];
-    if (win.process?.env?.[key]) return win.process.env[key];
-  } catch {}
+    try {
+      // 3. Try Window Globals
+      const win = window as any;
+      if (win[k]) return win[k];
+      if (win.process?.env?.[k]) return win.process.env[k];
+    } catch {}
+  }
 
   return '';
 };
 
-// Standard Supabase keys
-const SB_URL = (getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL') || '').replace(/\/$/, '');
-const SB_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('SUPABASE_KEY') || '';
+const SB_URL = (getEnv('VITE_SUPABASE_URL') || '').replace(/\/$/, '');
+const SB_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || '';
 
 export const db = {
   async getAllArticles(): Promise<Article[]> {
     if (!this.isConfigured()) {
-      console.warn("Supabase Configuration Missing. Required: VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY");
       return [];
     }
 
@@ -45,15 +77,13 @@ export const db = {
       
       if (!response.ok) {
         const errorText = await response.text();
-        if (response.status === 401) console.error("Supabase Error: Invalid API Key (Unauthorized)");
-        if (response.status === 404) console.error("Supabase Error: 'articles' table not found. Check your schema.");
-        console.error(`Supabase Fetch Failed (${response.status}):`, errorText);
+        console.error(`Supabase API Error (${response.status}):`, errorText);
         return [];
       }
       
       return await response.json();
     } catch (error) {
-      console.error("Supabase Connection Error:", error);
+      console.error("Supabase Network Failure:", error);
       return [];
     }
   },
@@ -73,14 +103,8 @@ export const db = {
         body: JSON.stringify(article)
       });
       
-      if (!response.ok) {
-        const errorDetail = await response.text();
-        console.error(`Supabase Insert Failed (${response.status}):`, errorDetail);
-        return false;
-      }
-      return true;
+      return response.ok;
     } catch (error) {
-      console.error("Supabase Save Exception:", error);
       return false;
     }
   },
@@ -102,20 +126,13 @@ export const db = {
   },
 
   isConfigured(): boolean {
-    const hasUrl = SB_URL.length > 0;
-    const hasKey = SB_KEY.length > 0;
-    
-    // Log helpful hints for debugging
-    if (!hasUrl) console.debug("Missing env: VITE_SUPABASE_URL");
-    if (!hasKey) console.debug("Missing env: VITE_SUPABASE_ANON_KEY");
-    
-    return hasUrl && hasKey;
+    return SB_URL.length > 0 && SB_KEY.length > 0;
   },
 
   getConfigs() {
     return {
-      url: SB_URL ? `${SB_URL.substring(0, 15)}...` : 'MISSING',
-      key: SB_KEY ? 'PROVIDED (Masked)' : 'MISSING'
+      url: SB_URL || 'MISSING',
+      key: SB_KEY ? 'CONFIGURED' : 'MISSING'
     };
   }
 };

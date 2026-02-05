@@ -17,7 +17,8 @@ import {
   AlertTriangle, 
   Zap, 
   Loader2, 
-  Settings 
+  Settings,
+  Code
 } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { Category, Article } from '../types';
@@ -52,7 +53,6 @@ const AdminDashboard = () => {
     const cloudArticles = await db.getAllArticles();
     
     if (db.isConfigured()) {
-      // If we got articles (or at least didn't error), it's online
       setDbStatus('online');
     } else {
       setDbStatus('offline');
@@ -97,7 +97,7 @@ const AdminDashboard = () => {
     const success = await db.saveArticle(articleToSave);
     
     if (success) {
-      alert('GLOBAL SUCCESS: Article is now live for EVERYONE on the website!');
+      alert('SUCCESS: Published to Cloud.');
       setNewArticle({
         title: '',
         excerpt: '',
@@ -112,7 +112,7 @@ const AdminDashboard = () => {
     } else {
       const currentLocal = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
       localStorage.setItem('ayyan_articles', JSON.stringify([...currentLocal, articleToSave]));
-      alert('SYNC FAILED: Article saved locally to your browser. Check console (F12) for detailed Supabase error messages.');
+      alert('SYNC ERROR: Saved locally. Check console for details.');
       loadData();
     }
     setIsSyncing(false);
@@ -195,9 +195,9 @@ const AdminDashboard = () => {
                 <h1 className="text-4xl font-black text-slate-900">Platform Health</h1>
                 <p className="text-slate-500 font-medium">Real-time status of your global tech writing platform.</p>
               </div>
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border ${dbStatus === 'online' ? 'bg-green-50 text-green-600 border-green-100' : dbStatus === 'checking' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border ${dbStatus === 'online' ? 'bg-green-50 text-green-600 border-green-100' : dbStatus === 'checking' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
                 {dbStatus === 'online' ? <Globe size={14} /> : dbStatus === 'checking' ? <Loader2 size={14} className="animate-spin" /> : <AlertTriangle size={14} />}
-                {dbStatus === 'online' ? 'Cloud Database Connected' : dbStatus === 'checking' ? 'Verifying Cloud...' : 'Cloud Connection Missing'}
+                {dbStatus === 'online' ? 'Cloud Database Connected' : dbStatus === 'checking' ? 'Verifying Cloud...' : 'Cloud Disconnected'}
               </div>
             </header>
 
@@ -216,20 +216,50 @@ const AdminDashboard = () => {
               </div>
             </div>
 
-            <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm">
-              <h3 className="text-xl font-bold mb-8 flex items-center gap-2"><TrendingUp size={20} className="text-blue-600" /> Recent Transactions</h3>
-              <div className="space-y-4">
-                {sales.length > 0 ? sales.slice(-5).reverse().map((sale, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center"><ShoppingCart size={18} className="text-green-500" /></div>
-                      <div><p className="font-bold text-slate-900 text-sm">{sale.name}</p><p className="text-xs text-slate-400">{new Date(sale.timestamp).toLocaleDateString()}</p></div>
+            {dbStatus !== 'online' && (
+              <div className="bg-red-50 border border-red-100 rounded-[2.5rem] p-10">
+                <h3 className="text-xl font-black text-red-900 mb-6 flex items-center gap-3 uppercase tracking-tight">
+                  <AlertTriangle size={24} /> Supabase Configuration Required
+                </h3>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                  <div className="space-y-4">
+                    <p className="text-sm font-bold text-red-800">Your environment is missing the following keys:</p>
+                    <div className="space-y-3">
+                      <div className="bg-white p-4 rounded-2xl border border-red-200 flex justify-between items-center">
+                        <span className="text-xs font-black text-slate-400 uppercase">VITE_SUPABASE_URL</span>
+                        <span className={configs.url === 'MISSING' ? 'text-red-500 font-bold' : 'text-green-500 font-bold'}>{configs.url === 'MISSING' ? 'MISSING' : 'FOUND'}</span>
+                      </div>
+                      <div className="bg-white p-4 rounded-2xl border border-red-200 flex justify-between items-center">
+                        <span className="text-xs font-black text-slate-400 uppercase">VITE_SUPABASE_ANON_KEY</span>
+                        <span className={configs.key === 'MISSING' ? 'text-red-500 font-bold' : 'text-green-500 font-bold'}>{configs.key}</span>
+                      </div>
                     </div>
-                    <div className="font-black text-slate-900 text-sm">+${sale.price}</div>
+                    <div className="p-4 bg-white/50 rounded-2xl text-[11px] text-red-700 leading-relaxed italic">
+                      Add these to your environment variables or .env file and restart your application.
+                    </div>
                   </div>
-                )) : <div className="text-center py-12 text-slate-400 italic">No sales recorded yet.</div>}
+                  <div className="space-y-4">
+                    <p className="text-sm font-bold text-red-800 flex items-center gap-2"><Code size={16}/> Database Setup:</p>
+                    <div className="bg-slate-900 text-blue-300 p-6 rounded-3xl text-[10px] font-mono leading-relaxed overflow-x-auto h-48 border border-slate-800">
+                      <pre>{`CREATE TABLE articles (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  excerpt TEXT,
+  content TEXT,
+  category TEXT,
+  date TEXT,
+  image TEXT,
+  price NUMERIC
+);
+ALTER TABLE articles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public Read" ON articles FOR SELECT USING (true);
+CREATE POLICY "Public Write" ON articles FOR INSERT WITH CHECK (true);`}</pre>
+                    </div>
+                    <p className="text-[10px] text-red-600 font-medium">Run this SQL in your Supabase Dashboard to create the required table structure.</p>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -239,7 +269,6 @@ const AdminDashboard = () => {
               <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm">
                 <h3 className="text-2xl font-black mb-8 flex items-center gap-3"><Zap className="text-blue-600" /> Publish New Post</h3>
                 <form onSubmit={handleAddArticle} className="space-y-6">
-                  {/* ... Article Form Inputs (Simplified for brevity as they remain largely same) */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-400 uppercase ml-1">Title</label>
@@ -282,7 +311,7 @@ const AdminDashboard = () => {
                     className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3 disabled:opacity-50"
                   >
                     {isSyncing ? <Loader2 className="animate-spin" /> : <Globe size={20} />}
-                    Publish to Global Hub
+                    Publish Globally
                   </button>
                 </form>
               </div>
@@ -290,31 +319,16 @@ const AdminDashboard = () => {
 
             <div className="space-y-6">
               <div className="bg-slate-900 p-8 rounded-[2rem] text-white">
-                 <h4 className="text-sm font-black text-blue-400 uppercase mb-4 flex items-center gap-2 tracking-widest"><Settings size={16}/> Supabase Setup</h4>
-                 <div className="space-y-4 text-[11px] font-medium">
-                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                      <span className="text-slate-500">PROJECT URL</span>
-                      <span className={configs.url === 'MISSING' ? 'text-red-400' : 'text-green-400'}>{configs.url}</span>
-                    </div>
-                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                      <span className="text-slate-500">ANON KEY</span>
-                      <span className={configs.key === 'MISSING' ? 'text-red-400' : 'text-green-400'}>{configs.key}</span>
-                    </div>
-                 </div>
-                 <div className="mt-6 p-4 bg-slate-800/50 rounded-xl">
-                   <p className="text-[10px] text-slate-400 leading-relaxed italic">
-                     {dbStatus === 'online' 
-                      ? "Cloud is active. Everything is syncing globally." 
-                      : "Cloud inactive. To fix: 1. Set VITE_SUPABASE_URL (e.g. https://xyz.supabase.co) 2. Set VITE_SUPABASE_ANON_KEY 3. Restart dev server."}
-                   </p>
+                 <h4 className="text-sm font-black text-blue-400 uppercase mb-4 flex items-center gap-2 tracking-widest"><Settings size={16}/> Supabase Status</h4>
+                 <div className="space-y-2 text-[10px] font-mono text-slate-400">
+                    <p>ENDPOINT: {configs.url.substring(0, 30)}...</p>
+                    <p>STATUS: {dbStatus.toUpperCase()}</p>
                  </div>
               </div>
               
-              <h3 className="font-black text-slate-400 uppercase text-xs tracking-widest ml-4">Live Inventory</h3>
+              <h3 className="font-black text-slate-400 uppercase text-xs tracking-widest ml-4">Inventory</h3>
               <div className="space-y-4 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
-                {isSyncing && allArticles.length === 0 ? (
-                  <div className="text-center py-20"><Loader2 className="animate-spin mx-auto text-blue-500" /></div>
-                ) : allArticles.slice().reverse().map((a: Article) => (
+                {allArticles.slice().reverse().map((a: Article) => (
                   <div key={a.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4 group hover:border-blue-200 transition-all">
                     <img src={a.image || 'https://picsum.photos/seed/tech/100'} className="w-12 h-12 rounded-xl object-cover" alt="" />
                     <div className="flex-grow">
@@ -332,35 +346,6 @@ const AdminDashboard = () => {
                 ))}
               </div>
             </div>
-          </div>
-        )}
-
-        {activeTab === 'sales' && (
-          <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm max-w-6xl mx-auto">
-             <div className="flex justify-between items-center mb-10 pb-6 border-b border-slate-50">
-               <h3 className="text-2xl font-black text-slate-900">Earnings Report</h3>
-               <div className="px-8 py-4 bg-green-50 text-green-600 rounded-[1.5rem] font-black text-2xl border border-green-100">${totalRevenue.toFixed(2)}</div>
-             </div>
-             <div className="overflow-x-auto">
-               <table className="w-full text-left">
-                 <thead>
-                   <tr className="border-b border-slate-100 font-black text-xs text-slate-400 uppercase tracking-widest">
-                     <th className="pb-4">Date</th>
-                     <th className="pb-4">Product</th>
-                     <th className="pb-4 text-right">Amount</th>
-                   </tr>
-                 </thead>
-                 <tbody className="divide-y divide-slate-50 text-sm">
-                   {sales.slice().reverse().map((sale, i) => (
-                     <tr key={i} className="hover:bg-slate-50 transition-colors">
-                       <td className="py-6 text-slate-500">{new Date(sale.timestamp).toLocaleDateString()}</td>
-                       <td className="py-6 font-bold text-slate-900">{sale.name}</td>
-                       <td className="py-6 font-black text-green-600 text-right">+${sale.price.toFixed(2)}</td>
-                     </tr>
-                   ))}
-                 </tbody>
-               </table>
-             </div>
           </div>
         )}
       </main>
