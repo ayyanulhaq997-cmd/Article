@@ -5,14 +5,15 @@ import {
   ArrowLeft, 
   Clock, 
   Calendar, 
-  ShoppingCart, 
   Sparkles, 
   Plus, 
   Minus,
-  Quote
+  Quote,
+  Loader2
 } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { getArticleSummary } from '../geminiService';
+import { db } from '../supabaseService';
 import SEO from '../components/SEO';
 
 const ArticleDetailPage = () => {
@@ -21,17 +22,29 @@ const ArticleDetailPage = () => {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [fontSize, setFontSize] = useState(18);
   const [article, setArticle] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    const staticArticle = ARTICLES.find(a => a.id === id);
-    if (staticArticle) {
-      setArticle(staticArticle);
-    } else {
-      const dynamic = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
-      const found = dynamic.find((a: any) => a.id === id);
-      setArticle(found);
-    }
+    const loadArticle = async () => {
+      setLoading(true);
+      const staticArticle = ARTICLES.find(a => a.id === id);
+      if (staticArticle) {
+        setArticle(staticArticle);
+      } else {
+        const cloudArticles = await db.getAllArticles();
+        const found = cloudArticles.find(a => a.id === id);
+        setArticle(found);
+      }
+      setLoading(false);
+    };
+    loadArticle();
   }, [id]);
+
+  if (loading) return (
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <Loader2 className="animate-spin text-blue-600" size={40} />
+    </div>
+  );
 
   if (!article) return <div className="text-center py-20 font-bold">Article not found.</div>;
 
@@ -58,18 +71,23 @@ const ArticleDetailPage = () => {
           <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 mb-8 leading-tight">{article.title}</h1>
           <div className="flex flex-wrap items-center gap-6 text-sm text-slate-500 font-medium">
             <div className="flex items-center gap-2"><Calendar size={16} /> {article.date}</div>
-            <div className="flex items-center gap-2"><Clock size={16} /> {article.readTime} read</div>
+            <div className="flex items-center gap-2"><Clock size={16} /> {article.readTime || '5 min'} read</div>
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 -mt-10">
-        <div className="bg-white rounded-2xl shadow-xl border overflow-hidden mb-12">
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden mb-12">
           <img src={article.image} alt={article.title} className="w-full aspect-video object-cover" />
           <div className="p-8 md:p-12 space-y-8">
             <div className="flex justify-between items-center border-b pb-6">
-               <button onClick={handleSummarize} className="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl border border-indigo-100">
-                 <Sparkles size={14} className="inline mr-1" /> Quick AI Summary
+               <button 
+                 onClick={handleSummarize} 
+                 disabled={isSummarizing}
+                 className="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-xl border border-indigo-100 hover:bg-indigo-100 transition-colors"
+               >
+                 {isSummarizing ? <Loader2 size={14} className="animate-spin inline mr-1" /> : <Sparkles size={14} className="inline mr-1" />}
+                 Quick AI Summary
                </button>
                <div className="flex gap-2">
                  <button onClick={() => setFontSize(Math.max(14, fontSize - 2))} className="p-2 bg-slate-50 rounded-lg"><Minus size={14}/></button>
@@ -84,30 +102,30 @@ const ArticleDetailPage = () => {
               </div>
             )}
 
-            {/* NEW INTRO BOX */}
+            {/* INTRO BOX (FIXED: Always rendered if text exists) */}
             {article.introText && (
-              <div className="bg-slate-50 border-l-4 border-blue-600 p-8 rounded-r-2xl shadow-sm relative overflow-hidden group">
+              <div className="bg-blue-50/50 border-l-4 border-blue-600 p-8 rounded-r-2xl shadow-sm relative overflow-hidden group">
                 <div className="absolute top-4 right-4 text-blue-100 group-hover:text-blue-200 transition-colors">
                   <Quote size={40} />
                 </div>
                 <div className="relative z-10">
-                  <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3">Article Insight</h4>
-                  <p className="text-slate-800 font-medium leading-relaxed italic">
+                  <h4 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-3">Article Preview</h4>
+                  <p className="text-slate-800 font-medium leading-relaxed italic text-lg">
                     {article.introText}
                   </p>
                 </div>
               </div>
             )}
 
-            <article style={{ fontSize: `${fontSize}px` }} className="prose prose-slate max-w-none text-slate-700 leading-relaxed whitespace-pre-line">
+            <article style={{ fontSize: `${fontSize}px` }} className="prose prose-slate max-w-none text-slate-700 leading-relaxed whitespace-pre-line font-medium">
               {article.content}
             </article>
 
             {article.price && (
               <div className="mt-12 p-8 bg-slate-900 rounded-3xl text-white text-center">
-                <h3 className="text-2xl font-bold mb-4">Own this article?</h3>
-                <p className="text-slate-400 mb-8">Purchase full rights to publish this content on your own platform.</p>
-                <Link to={`/checkout?id=${article.id}`} className="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700">
+                <h3 className="text-2xl font-bold mb-4">Exclusive Content Rights</h3>
+                <p className="text-slate-400 mb-8">Purchase full commercial rights to publish this content on your own platform.</p>
+                <Link to={`/checkout?id=${article.id}`} className="px-10 py-4 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-500/20">
                   Buy Full Rights for ${article.price}
                 </Link>
               </div>

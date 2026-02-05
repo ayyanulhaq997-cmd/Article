@@ -6,20 +6,22 @@ import {
   PlusCircle, 
   LogOut, 
   Trash2, 
-  Lock,
-  ShoppingCart,
-  Layers,
-  TrendingUp,
-  CheckCircle,
-  AlignLeft,
-  Type,
-  Copy,
-  Globe,
-  AlertTriangle,
-  Send
+  Lock, 
+  ShoppingCart, 
+  Layers, 
+  TrendingUp, 
+  CheckCircle, 
+  AlignLeft, 
+  Type, 
+  Globe, 
+  AlertTriangle, 
+  Zap, 
+  Loader2, 
+  Settings 
 } from 'lucide-react';
 import { ARTICLES } from '../constants';
-import { Category } from '../types';
+import { Category, Article } from '../types';
+import { db } from '../supabaseService';
 import SEO from '../components/SEO';
 
 const AdminDashboard = () => {
@@ -27,8 +29,10 @@ const AdminDashboard = () => {
   const [key, setKey] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'articles' | 'sales'>('overview');
   
-  const [allArticles, setAllArticles] = useState<any[]>([]);
+  const [allArticles, setAllArticles] = useState<Article[]>([]);
   const [sales, setSales] = useState<any[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [dbStatus, setDbStatus] = useState<'online' | 'offline'>('offline');
   
   const [newArticle, setNewArticle] = useState({
     title: '',
@@ -41,11 +45,23 @@ const AdminDashboard = () => {
     isPLR: true
   });
 
-  useEffect(() => {
-    const savedArticles = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
-    setAllArticles([...ARTICLES, ...savedArticles]);
+  const loadData = async () => {
+    setIsSyncing(true);
+    const cloudArticles = await db.getAllArticles();
+    
+    // Check if cloud works
+    if (process.env.SUPABASE_KEY && process.env.SUPABASE_URL) {
+      setDbStatus('online');
+    }
+
+    setAllArticles([...ARTICLES, ...cloudArticles]);
     const savedSales = JSON.parse(localStorage.getItem('ayyan_sales') || '[]');
     setSales(savedSales);
+    setIsSyncing(false);
+  };
+
+  useEffect(() => {
+    loadData();
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -63,47 +79,57 @@ const AdminDashboard = () => {
     sessionStorage.removeItem('ayyan_admin_auth');
   };
 
-  const handleAddArticle = (e: React.FormEvent) => {
+  const handleAddArticle = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSyncing(true);
     const id = `art-${Date.now()}`;
-    const articleToSave = { 
+    const articleToSave: Article = { 
       ...newArticle, 
       id, 
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }),
       readTime: '5 min'
     };
     
-    const currentDynamic = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
-    const updated = [...currentDynamic, articleToSave];
-    localStorage.setItem('ayyan_articles', JSON.stringify(updated));
+    // Save to Cloud!
+    const success = await db.saveArticle(articleToSave);
     
-    setAllArticles([...ARTICLES, ...updated]);
-    setNewArticle({
-      title: '',
-      excerpt: '',
-      introText: '',
-      content: '',
-      category: Category.Serverless,
-      price: 45,
-      image: '',
-      isPLR: true
-    });
-    alert('SUCCESS: Article saved to your local list! To make it visible to OTHER users, please use the "Publish Globally" sync button in the inventory list.');
-  };
-
-  const deleteArticle = (id: string) => {
-    if (confirm('Delete this article?')) {
-      const currentDynamic = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
-      const updated = currentDynamic.filter((a: any) => a.id !== id);
-      localStorage.setItem('ayyan_articles', JSON.stringify(updated));
-      setAllArticles([...ARTICLES, ...updated]);
+    if (success) {
+      alert('GLOBAL SUCCESS: Article is now live for EVERYONE on the website!');
+      setNewArticle({
+        title: '',
+        excerpt: '',
+        introText: '',
+        content: '',
+        category: Category.Serverless,
+        price: 45,
+        image: '',
+        isPLR: true
+      });
+      loadData();
+    } else {
+      // Fallback to local storage if DB keys are missing
+      const currentLocal = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
+      localStorage.setItem('ayyan_articles', JSON.stringify([...currentLocal, articleToSave]));
+      alert('LOCAL ONLY: Database credentials not found. Article saved to your browser only.');
+      loadData();
     }
+    setIsSyncing(false);
   };
 
-  const publishGlobally = (article: any) => {
-    const code = JSON.stringify(article, null, 2);
-    navigator.clipboard.writeText(code);
-    alert('PUBLISH READY: The data for this article has been copied to your clipboard. \n\nSend this to Ayyan (the developer) and he will update the website so EVERYONE can see it permanently.');
+  const deleteArticle = async (id: string) => {
+    if (confirm('Delete this article from the Cloud?')) {
+      setIsSyncing(true);
+      const success = await db.deleteArticle(id);
+      if (success) {
+        alert('Deleted from Cloud Database.');
+      } else {
+        // Try local storage delete as fallback
+        const currentLocal = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
+        localStorage.setItem('ayyan_articles', JSON.stringify(currentLocal.filter((a: any) => a.id !== id)));
+      }
+      loadData();
+      setIsSyncing(false);
+    }
   };
 
   if (!isLoggedIn) {
@@ -138,7 +164,6 @@ const AdminDashboard = () => {
 
   const totalRevenue = sales.reduce((acc, sale) => acc + sale.price, 0);
   const soldCount = new Set(sales.map(s => s.id)).size;
-  const unsoldCount = allArticles.length - soldCount;
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -151,7 +176,7 @@ const AdminDashboard = () => {
             <LayoutDashboard size={18} /> Overview
           </button>
           <button onClick={() => setActiveTab('articles')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'articles' ? 'bg-blue-600' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-            <PlusCircle size={18} /> Manage Content
+            <PlusCircle size={18} /> Global Content
           </button>
           <button onClick={() => setActiveTab('sales')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all ${activeTab === 'sales' ? 'bg-blue-600' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
             <DollarSign size={18} /> Transactions
@@ -168,30 +193,31 @@ const AdminDashboard = () => {
             <header className="flex justify-between items-end">
               <div>
                 <h1 className="text-4xl font-black text-slate-900">Platform Health</h1>
-                <p className="text-slate-500 font-medium">Real-time status of your tech writing business.</p>
+                <p className="text-slate-500 font-medium">Real-time status of your global tech writing platform.</p>
               </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 rounded-xl text-xs font-bold border border-amber-100">
-                <AlertTriangle size={14} /> Local Storage Mode Active
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border ${dbStatus === 'online' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                {dbStatus === 'online' ? <Globe size={14} /> : <AlertTriangle size={14} />}
+                {dbStatus === 'online' ? 'Cloud Database Connected' : 'Local Preview Only'}
               </div>
             </header>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center gap-6">
                 <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center"><DollarSign size={32} /></div>
-                <div><p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Total Earnings</p><h3 className="text-3xl font-black text-slate-900">${totalRevenue.toFixed(2)}</h3></div>
+                <div><p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Revenue</p><h3 className="text-3xl font-black text-slate-900">${totalRevenue.toFixed(2)}</h3></div>
               </div>
               <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center gap-6">
                 <div className="w-16 h-16 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center"><CheckCircle size={32} /></div>
-                <div><p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Sold Items</p><h3 className="text-3xl font-black text-slate-900">{soldCount}</h3></div>
+                <div><p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Conversions</p><h3 className="text-3xl font-black text-slate-900">{soldCount}</h3></div>
               </div>
               <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex items-center gap-6">
                 <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center"><Layers size={32} /></div>
-                <div><p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Inventory</p><h3 className="text-3xl font-black text-slate-900">{allArticles.length}</h3></div>
+                <div><p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Live Posts</p><h3 className="text-3xl font-black text-slate-900">{allArticles.length}</h3></div>
               </div>
             </div>
 
             <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm">
-              <h3 className="text-xl font-bold mb-8 flex items-center gap-2"><TrendingUp size={20} className="text-blue-600" /> Recent Activity</h3>
+              <h3 className="text-xl font-bold mb-8 flex items-center gap-2"><TrendingUp size={20} className="text-blue-600" /> Recent Transactions</h3>
               <div className="space-y-4">
                 {sales.length > 0 ? sales.slice(-5).reverse().map((sale, i) => (
                   <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
@@ -211,16 +237,16 @@ const AdminDashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 max-w-7xl mx-auto">
             <div className="lg:col-span-2">
               <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm">
-                <h3 className="text-2xl font-black mb-8 flex items-center gap-3"><PlusCircle className="text-blue-600" /> New Tech Post</h3>
+                <h3 className="text-2xl font-black mb-8 flex items-center gap-3"><Zap className="text-blue-600" /> Publish New Post</h3>
                 <form onSubmit={handleAddArticle} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Article Title</label>
-                      <input required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.title} onChange={e => setNewArticle({...newArticle, title: e.target.value})} placeholder="Mastering Cloud Computing" />
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Title</label>
+                      <input required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.title} onChange={e => setNewArticle({...newArticle, title: e.target.value})} placeholder="Article Title" />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Category</label>
-                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" value={newArticle.category} onChange={e => setNewArticle({...newArticle, category: e.target.value as any})}>
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Topic</label>
+                      <select className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-bold" value={newArticle.category} onChange={e => setNewArticle({...newArticle, category: e.target.value as any})}>
                         {Object.values(Category).map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </div>
@@ -228,75 +254,77 @@ const AdminDashboard = () => {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Price (USD)</label>
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Price ($)</label>
                       <input type="number" className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.price} onChange={e => setNewArticle({...newArticle, price: Number(e.target.value)})} />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Image Link (Unsplash)</label>
-                      <input required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.image} onChange={e => setNewArticle({...newArticle, image: e.target.value})} placeholder="https://unsplash.com/..." />
+                      <label className="text-xs font-bold text-slate-400 uppercase ml-1">Thumbnail URL</label>
+                      <input required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500" value={newArticle.image} onChange={e => setNewArticle({...newArticle, image: e.target.value})} placeholder="https://..." />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1 flex items-center gap-1">
-                      <Type size={14} className="text-blue-500" /> Short Excerpt (Shows on Blog Page)
+                      <Type size={14} className="text-blue-500" /> Short Excerpt (Summary for the List)
                     </label>
-                    <textarea rows={2} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.excerpt} onChange={e => setNewArticle({...newArticle, excerpt: e.target.value})} placeholder="A quick summary that shows below the title on the Blog page..." />
+                    <textarea rows={2} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.excerpt} onChange={e => setNewArticle({...newArticle, excerpt: e.target.value})} placeholder="Appears below the title on the Blog page..." />
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1 flex items-center gap-1">
-                      <AlignLeft size={14} className="text-blue-500" /> Intro Box (Preamble lines)
+                      <AlignLeft size={14} className="text-blue-500" /> Intro Highlight Box (Preamble)
                     </label>
-                    <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.introText} onChange={e => setNewArticle({...newArticle, introText: e.target.value})} placeholder="Special highlighted text before the main content starts..." />
+                    <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.introText} onChange={e => setNewArticle({...newArticle, introText: e.target.value})} placeholder="Highlighted summary block at the start of the post..." />
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1">Main Article Content</label>
-                    <textarea rows={10} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" value={newArticle.content} onChange={e => setNewArticle({...newArticle, content: e.target.value})} placeholder="Write the full technical article here..." />
+                    <textarea rows={10} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" value={newArticle.content} onChange={e => setNewArticle({...newArticle, content: e.target.value})} placeholder="Full Markdown/Text content..." />
                   </div>
 
-                  <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-100">Add to Local List</button>
+                  <button 
+                    type="submit" 
+                    disabled={isSyncing}
+                    className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    {isSyncing ? <Loader2 className="animate-spin" /> : <Globe size={20} />}
+                    Publish Globally
+                  </button>
                 </form>
               </div>
             </div>
 
             <div className="space-y-6">
-              <div className="bg-blue-50 p-6 rounded-3xl border border-blue-100">
-                 <h4 className="text-sm font-black text-blue-700 uppercase mb-2 flex items-center gap-2"><Globe size={16}/> Global Sync Center</h4>
-                 <p className="text-xs text-blue-600/80 leading-relaxed mb-4 font-medium">Articles marked "Local Only" are invisible to other users. Use the sync button to prepare them for global publishing.</p>
+              <div className="bg-slate-900 p-6 rounded-3xl text-white">
+                 <h4 className="text-sm font-black text-blue-400 uppercase mb-2 flex items-center gap-2 tracking-widest"><Settings size={16}/> Sync Status</h4>
+                 <p className="text-xs text-slate-400 leading-relaxed font-medium">
+                   {dbStatus === 'online' 
+                    ? "Live Cloud Database is active. Every article you publish here is visible to the entire world instantly." 
+                    : "No Cloud DB detected. Articles are being stored locally in your browser. Contact developer to link Supabase."}
+                 </p>
               </div>
               
-              <h3 className="font-black text-slate-400 uppercase text-xs tracking-widest ml-4">Article Inventory</h3>
+              <h3 className="font-black text-slate-400 uppercase text-xs tracking-widest ml-4">Global Inventory</h3>
               <div className="space-y-4 max-h-[1200px] overflow-y-auto pr-2 custom-scrollbar">
-                {allArticles.slice().reverse().map((a: any) => (
-                  <div key={a.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4 group">
+                {isSyncing && allArticles.length === 0 ? (
+                  <div className="text-center py-20"><Loader2 className="animate-spin mx-auto text-blue-500" /></div>
+                ) : allArticles.slice().reverse().map((a: Article) => (
+                  <div key={a.id} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4 group hover:border-blue-200 transition-all">
                     <img src={a.image || 'https://picsum.photos/seed/tech/100'} className="w-12 h-12 rounded-xl object-cover" alt="" />
                     <div className="flex-grow">
                       <p className="font-bold text-slate-900 text-sm line-clamp-1">{a.title}</p>
                       <div className="flex items-center gap-2">
                          <p className="text-[10px] text-blue-600 font-black tracking-tight uppercase">{a.category}</p>
-                         {a.id.startsWith('art-') ? (
-                           <span className="text-[8px] bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded font-black uppercase">Local Only</span>
-                         ) : (
+                         {!ARTICLES.find(sa => sa.id === a.id) && (
                            <span className="text-[8px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded font-black uppercase">Live</span>
                          )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
-                      {a.id.startsWith('art-') && (
-                        <>
-                          <button 
-                            onClick={() => publishGlobally(a)} 
-                            className="p-2 text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all" 
-                            title="Publish Globally (Sync with Developer)"
-                          >
-                            <Send size={16} />
-                          </button>
-                          <button onClick={() => deleteArticle(a.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                            <Trash2 size={16} />
-                          </button>
-                        </>
+                      {!ARTICLES.find(sa => sa.id === a.id) && (
+                        <button onClick={() => deleteArticle(a.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                          <Trash2 size={16} />
+                        </button>
                       )}
                     </div>
                   </div>
@@ -309,7 +337,7 @@ const AdminDashboard = () => {
         {activeTab === 'sales' && (
           <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm max-w-6xl mx-auto">
              <div className="flex justify-between items-center mb-10 pb-6 border-b border-slate-50">
-               <h3 className="text-2xl font-black text-slate-900">Earnings Ledger</h3>
+               <h3 className="text-2xl font-black text-slate-900">Earnings Report</h3>
                <div className="px-8 py-4 bg-green-50 text-green-600 rounded-[1.5rem] font-black text-2xl border border-green-100">${totalRevenue.toFixed(2)}</div>
              </div>
              <div className="overflow-x-auto">
@@ -317,8 +345,8 @@ const AdminDashboard = () => {
                  <thead>
                    <tr className="border-b border-slate-100 font-black text-xs text-slate-400 uppercase tracking-widest">
                      <th className="pb-4">Date</th>
-                     <th className="pb-4">Item</th>
-                     <th className="pb-4 text-right">Revenue</th>
+                     <th className="pb-4">Product</th>
+                     <th className="pb-4 text-right">Amount</th>
                    </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-50 text-sm">
