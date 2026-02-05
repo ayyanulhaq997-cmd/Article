@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Tag, ChevronRight, ShoppingCart } from 'lucide-react';
 import { ARTICLES } from '../constants';
@@ -8,12 +8,22 @@ import SEO from '../components/SEO';
 import NewsletterSection from '../components/NewsletterSection';
 
 const BlogPage = () => {
-  const [search, setSearch] = React.useState('');
-  const [activeCategory, setActiveCategory] = React.useState<Category | 'All'>('All');
+  const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState<Category | 'All'>('All');
+  const [allArticles, setAllArticles] = useState(ARTICLES);
+
+  useEffect(() => {
+    // Merge constant articles with dynamic local ones
+    const dynamic = localStorage.getItem('ayyan_articles');
+    if (dynamic) {
+      const parsed = JSON.parse(dynamic);
+      setAllArticles([...ARTICLES, ...parsed]);
+    }
+  }, []);
 
   const categories = ['All', ...Object.values(Category)];
 
-  const filtered = ARTICLES.filter(article => {
+  const filtered = allArticles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(search.toLowerCase()) || 
                           article.excerpt.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = activeCategory === 'All' || article.category === activeCategory;
@@ -68,7 +78,7 @@ const BlogPage = () => {
 
         {/* Results */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filtered.length > 0 ? filtered.map((article) => (
+          {filtered.length > 0 ? filtered.reverse().map((article) => (
             <div key={article.id} className="group bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
               <div className="relative h-60 overflow-hidden">
                 <img 
@@ -107,7 +117,6 @@ const BlogPage = () => {
                     Read More <ChevronRight size={16} />
                   </Link>
                   
-                  {/* Conditional Buy Article Button */}
                   {article.price && (
                     <Link 
                       to={`/checkout?id=${article.id}`} 
@@ -125,13 +134,7 @@ const BlogPage = () => {
                 <Search size={32} />
               </div>
               <h3 className="text-xl font-bold text-slate-900 mb-2">No matching articles</h3>
-              <p className="text-slate-500 mb-8 max-w-sm mx-auto">We couldn't find any articles matching your search or filters. Try adjusting your criteria.</p>
-              <button 
-                onClick={() => { setSearch(''); setActiveCategory('All'); }}
-                className="px-6 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200"
-              >
-                Clear all filters
-              </button>
+              <p className="text-slate-500 mb-8 max-w-sm mx-auto">Try adjusting your filters.</p>
             </div>
           )}
         </div>

@@ -1,143 +1,138 @@
-import React from "react";
-import { useLocation, Link } from "react-router-dom";
+import React, { useEffect, useState } from 'react';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import {
-  ShieldCheck,
-  Check,
   ShoppingBag,
   ArrowLeft,
-  PartyPopper,
-  ExternalLink,
-} from "lucide-react";
-import SEO from "../components/SEO";
-import { ARTICLES, SERVICES } from "../constants";
+  ShieldCheck,
+  Mail,
+  CheckCircle
+} from 'lucide-react';
+import { ARTICLES, SERVICES } from '../constants';
+import SEO from '../components/SEO';
 
-const CheckoutPage: React.FC = () => {
+const CheckoutPage = () => {
   const query = new URLSearchParams(useLocation().search);
-  const itemId = query.get("id");
-  const success = query.get("success") === "true";
+  const itemId = query.get('id');
+  const navigate = useNavigate();
+  const [item, setItem] = useState<any>(null);
 
-  const article = ARTICLES.find(a => a.id === itemId);
-  const service = SERVICES.find(s => s.id === itemId);
-  const item = article || service;
+  useEffect(() => {
+    const staticArticle = ARTICLES.find(a => a.id === itemId);
+    const service = SERVICES.find(s => s.id === itemId);
+    const dynamic = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
+    const dynamicArticle = dynamic.find((a: any) => a.id === itemId);
+
+    setItem(staticArticle || service || dynamicArticle);
+  }, [itemId]);
 
   if (!item) {
     return (
-      <div className="py-20 text-center">
-        <h2 className="text-2xl font-bold mb-4">No item selected</h2>
-        <Link to="/services" className="text-blue-600 font-bold">
-          Back to services
-        </Link>
+      <div className="py-20 text-center font-bold text-slate-700">
+        Item not found.
       </div>
     );
   }
 
-  const itemName = (item as any).title || (item as any).name;
+  const itemName = item.title || item.name;
+  const orderId = `PAY-${Date.now()}`;
 
-  /* ---------------- SUCCESS PAGE ---------------- */
-  if (success) {
-    return (
-      <div className="min-h-[70vh] flex items-center justify-center bg-slate-50 px-4">
-        <SEO title="Payment Received" />
-        <div className="bg-white rounded-3xl p-10 max-w-md w-full text-center shadow-xl">
-          <PartyPopper className="mx-auto text-green-600 mb-6" size={48} />
-          <h1 className="text-2xl font-extrabold mb-3">Payment Submitted</h1>
-          <p className="text-slate-600 mb-6">
-            Thanks! Once your Payoneer payment is confirmed, I’ll start working immediately.
-          </p>
-
-          <div className="bg-slate-50 p-5 rounded-xl text-left mb-6">
-            <p className="font-semibold">{itemName}</p>
-            <p className="text-blue-600 font-bold">${item.price.toFixed(2)}</p>
-          </div>
-
-          <Link
-            to="/"
-            className="block w-full py-3 bg-blue-600 text-white rounded-xl font-bold"
-          >
-            Return Home
-          </Link>
-        </div>
-      </div>
+  const handleConfirmPayment = () => {
+    localStorage.setItem(
+      'pending_payment',
+      JSON.stringify({
+        orderId,
+        itemId,
+        itemName,
+        price: item.price,
+        date: new Date().toISOString()
+      })
     );
-  }
 
-  /* ---------------- CHECKOUT PAGE ---------------- */
+    navigate(`/payment-success?order=${orderId}`);
+  };
+
   return (
     <div className="bg-slate-50 py-16">
-      <SEO title="Checkout | Payoneer Payment" />
+      <SEO title="Secure Checkout" description={`Checkout for ${itemName}`} />
 
       <div className="max-w-4xl mx-auto px-4">
         <Link
           to="/services"
-          className="inline-flex items-center mb-6 text-slate-500 hover:text-blue-600"
+          className="inline-flex items-center text-slate-500 hover:text-blue-600 mb-8 font-medium"
         >
-          <ArrowLeft size={18} className="mr-2" /> Back
+          <ArrowLeft size={18} className="mr-2" /> Back to Services
         </Link>
 
-        <div className="bg-white rounded-3xl p-8 shadow-sm border">
-          <h1 className="text-2xl font-extrabold mb-8">Checkout Summary</h1>
+        <div className="bg-white rounded-[2.5rem] p-8 md:p-12 border border-slate-200 shadow-sm">
+          <h1 className="text-3xl font-black text-slate-900 mb-8">
+            Checkout Summary
+          </h1>
 
-          {/* Item */}
-          <div className="flex justify-between items-center border-b pb-6 mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center">
-                <ShoppingBag className="text-blue-600" />
+          {/* ITEM */}
+          <div className="flex justify-between items-center py-8 border-b border-slate-100 mb-8">
+            <div className="flex items-center gap-6">
+              <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
+                <ShoppingBag size={28} />
               </div>
               <div>
-                <p className="font-bold">{itemName}</p>
-                <p className="text-sm text-slate-500">Digital Service</p>
+                <h3 className="text-xl font-bold text-slate-900">
+                  {itemName}
+                </h3>
+                <p className="text-slate-500">
+                  Professional Tech Service
+                </p>
               </div>
             </div>
-            <p className="text-lg font-bold">${item.price.toFixed(2)}</p>
+            <div className="text-2xl font-black text-slate-900">
+              ${item.price.toFixed(2)}
+            </div>
           </div>
 
-          {/* Total */}
-          <div className="flex justify-between font-extrabold text-xl mb-8">
-            <span>Total</span>
-            <span>${item.price.toFixed(2)}</span>
-          </div>
-
-          {/* Payoneer Instructions */}
-          <div className="bg-slate-50 border rounded-2xl p-6 mb-8">
-            <div className="flex items-center gap-2 mb-3">
-              <ShieldCheck className="text-blue-600" />
-              <h3 className="font-bold">Pay via Payoneer</h3>
+          {/* PAYONEER */}
+          <div className="bg-slate-50 rounded-3xl p-8 border border-slate-200">
+            <div className="flex items-center gap-3 mb-6">
+              <ShieldCheck className="text-blue-600" size={24} />
+              <h2 className="text-lg font-bold">
+                Pay via Payoneer (Manual)
+              </h2>
             </div>
 
-            <ul className="text-sm text-slate-600 space-y-2">
-              <li className="flex gap-2">
-                <Check size={16} className="text-green-600 mt-1" />
-                Login to your Payoneer account
-              </li>
-              <li className="flex gap-2">
-                <Check size={16} className="text-green-600 mt-1" />
-                Send <b>${item.price.toFixed(2)}</b> to my Payoneer email
-              </li>
-              <li className="flex gap-2">
-                <Check size={16} className="text-green-600 mt-1" />
-                Use item name as payment note
-              </li>
-            </ul>
+            <div className="space-y-4 text-sm text-slate-700">
+              <p>
+                Please send the payment using <strong>Payoneer</strong> to:
+              </p>
 
-            <p className="mt-4 text-sm">
-              <b>Payoneer Email:</b>{" "}
-              <span className="text-blue-600 font-semibold">
-                ayyanulhaq997@gmail.com
-              </span>
-            </p>
+              <div className="bg-white p-4 rounded-xl border border-slate-200">
+                <p className="font-bold text-slate-900 flex items-center gap-2">
+                  <Mail size={16} />
+                  ayyanulhaq997@gmail.com
+                </p>
+              </div>
+
+              <p>
+                <strong>Amount:</strong> ${item.price.toFixed(2)}
+              </p>
+              <p>
+                <strong>Order ID:</strong> {orderId}
+              </p>
+
+              <p className="text-slate-500">
+                After completing the payment, click the button below.
+                Your order will be reviewed and processed shortly.
+              </p>
+            </div>
+
+            <button
+              onClick={handleConfirmPayment}
+              className="w-full mt-8 py-5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all text-lg shadow-xl shadow-blue-200 flex items-center justify-center gap-3"
+            >
+              I Have Paid <CheckCircle size={22} />
+            </button>
           </div>
 
-          {/* Confirmation */}
-          <Link
-            to={`/checkout?success=true&id=${itemId}`}
-            className="block w-full py-4 bg-blue-600 text-white rounded-2xl font-bold text-center hover:bg-blue-700"
-          >
-            I Have Paid (Confirm)
-          </Link>
-
-          <p className="text-xs text-center text-slate-400 mt-4">
-            Payments are manually verified for security
-          </p>
+          <div className="mt-8 text-center text-xs text-slate-400 font-medium">
+            Payments are manually verified to ensure security & accuracy.
+          </div>
         </div>
       </div>
     </div>
