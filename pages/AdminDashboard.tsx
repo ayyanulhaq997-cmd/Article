@@ -49,9 +49,14 @@ const AdminDashboard = () => {
     setIsSyncing(true);
     const cloudArticles = await db.getAllArticles();
     
-    // Check if cloud works
-    if (process.env.SUPABASE_KEY && process.env.SUPABASE_URL) {
+    // Check if cloud works with provided keys
+    const hasUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const hasKey = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY;
+
+    if (hasUrl && hasKey) {
       setDbStatus('online');
+    } else {
+      setDbStatus('offline');
     }
 
     setAllArticles([...ARTICLES, ...cloudArticles]);
@@ -107,10 +112,10 @@ const AdminDashboard = () => {
       });
       loadData();
     } else {
-      // Fallback to local storage if DB keys are missing
+      // Fallback to local storage if DB keys are missing or request fails
       const currentLocal = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
       localStorage.setItem('ayyan_articles', JSON.stringify([...currentLocal, articleToSave]));
-      alert('LOCAL ONLY: Database credentials not found. Article saved to your browser only.');
+      alert('LOCAL ONLY: Cloud sync failed or credentials missing. Article saved to your browser only.');
       loadData();
     }
     setIsSyncing(false);
@@ -300,7 +305,7 @@ const AdminDashboard = () => {
                  <p className="text-xs text-slate-400 leading-relaxed font-medium">
                    {dbStatus === 'online' 
                     ? "Live Cloud Database is active. Every article you publish here is visible to the entire world instantly." 
-                    : "No Cloud DB detected. Articles are being stored locally in your browser. Contact developer to link Supabase."}
+                    : "No Cloud DB detected. Articles are being stored locally in your browser. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set."}
                  </p>
               </div>
               

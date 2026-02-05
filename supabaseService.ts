@@ -1,8 +1,9 @@
 
 import { Article } from './types';
 
-const SB_URL = (process.env.SUPABASE_URL || '').replace(/\/$/, '');
-const SB_KEY = process.env.SUPABASE_KEY || '';
+// Priority: VITE_ variables from the user, fallback to generic SUPABASE_ names
+const SB_URL = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, '');
+const SB_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_KEY || '';
 
 /**
  * Note: For this to work, you must create a table named 'articles' in Supabase with these columns:
