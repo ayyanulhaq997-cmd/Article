@@ -3,20 +3,18 @@ import { Article } from './types';
 
 /**
  * Robust environment variable helper
+ * Checks Vite, Process, and Window globals
  */
 const getEnv = (key: string): string => {
-  // 1. Try Vite's preferred method
   try {
     const meta = import.meta as any;
     if (meta.env && meta.env[key]) return meta.env[key];
   } catch {}
 
-  // 2. Try process.env (Node/some CI)
   try {
     if (typeof process !== 'undefined' && process.env && process.env[key]) return process.env[key];
   } catch {}
 
-  // 3. Try window (Global shim)
   try {
     const win = window as any;
     if (win[key]) return win[key];
@@ -26,37 +24,14 @@ const getEnv = (key: string): string => {
   return '';
 };
 
-const SB_URL = (getEnv('VITE_SUPABASE_URL') || '').replace(/\/$/, '');
-const SB_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || '';
-
-/**
- * SQL FOR SUPABASE (Run this in your Supabase SQL Editor):
- * 
- * create table articles (
- *   id text primary key,
- *   title text not null,
- *   excerpt text,
- *   introText text,
- *   content text,
- *   category text,
- *   date text,
- *   readTime text,
- *   image text,
- *   price numeric,
- *   isPLR boolean default true
- * );
- * 
- * -- Enable public access (Read)
- * alter table articles enable row level security;
- * create policy "Public Access" on articles for select using (true);
- * create policy "Admin Insert" on articles for insert with check (true);
- * create policy "Admin Delete" on articles for delete using (true);
- */
+// Standard Supabase keys
+const SB_URL = (getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL') || '').replace(/\/$/, '');
+const SB_KEY = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('SUPABASE_KEY') || '';
 
 export const db = {
   async getAllArticles(): Promise<Article[]> {
-    if (!SB_URL || !SB_KEY) {
-      console.warn("Supabase Config Missing: VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is not defined in .env");
+    if (!this.isConfigured()) {
+      console.warn("Supabase Configuration Missing. Required: VITE_SUPABASE_URL & VITE_SUPABASE_ANON_KEY");
       return [];
     }
 
@@ -69,20 +44,22 @@ export const db = {
       });
       
       if (!response.ok) {
-        const errorMsg = await response.text();
-        console.error(`Supabase Fetch Error (${response.status}):`, errorMsg);
+        const errorText = await response.text();
+        if (response.status === 401) console.error("Supabase Error: Invalid API Key (Unauthorized)");
+        if (response.status === 404) console.error("Supabase Error: 'articles' table not found. Check your schema.");
+        console.error(`Supabase Fetch Failed (${response.status}):`, errorText);
         return [];
       }
       
       return await response.json();
     } catch (error) {
-      console.error("Supabase Network Connection Failed:", error);
+      console.error("Supabase Connection Error:", error);
       return [];
     }
   },
 
   async saveArticle(article: Article): Promise<boolean> {
-    if (!SB_URL || !SB_KEY) return false;
+    if (!this.isConfigured()) return false;
 
     try {
       const response = await fetch(`${SB_URL}/rest/v1/articles`, {
@@ -98,18 +75,18 @@ export const db = {
       
       if (!response.ok) {
         const errorDetail = await response.text();
-        console.error(`Supabase Save Failed (${response.status}):`, errorDetail);
+        console.error(`Supabase Insert Failed (${response.status}):`, errorDetail);
         return false;
       }
       return true;
     } catch (error) {
-      console.error("Supabase Save Request Failed:", error);
+      console.error("Supabase Save Exception:", error);
       return false;
     }
   },
 
   async deleteArticle(id: string): Promise<boolean> {
-    if (!SB_URL || !SB_KEY) return false;
+    if (!this.isConfigured()) return false;
     try {
       const response = await fetch(`${SB_URL}/rest/v1/articles?id=eq.${id}`, {
         method: 'DELETE',
@@ -125,6 +102,20 @@ export const db = {
   },
 
   isConfigured(): boolean {
-    return !!(SB_URL && SB_KEY);
+    const hasUrl = SB_URL.length > 0;
+    const hasKey = SB_KEY.length > 0;
+    
+    // Log helpful hints for debugging
+    if (!hasUrl) console.debug("Missing env: VITE_SUPABASE_URL");
+    if (!hasKey) console.debug("Missing env: VITE_SUPABASE_ANON_KEY");
+    
+    return hasUrl && hasKey;
+  },
+
+  getConfigs() {
+    return {
+      url: SB_URL ? `${SB_URL.substring(0, 15)}...` : 'MISSING',
+      key: SB_KEY ? 'PROVIDED (Masked)' : 'MISSING'
+    };
   }
 };

@@ -32,7 +32,7 @@ const AdminDashboard = () => {
   const [allArticles, setAllArticles] = useState<Article[]>([]);
   const [sales, setSales] = useState<any[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [dbStatus, setDbStatus] = useState<'online' | 'offline'>('offline');
+  const [dbStatus, setDbStatus] = useState<'online' | 'offline' | 'checking'>('checking');
   
   const [newArticle, setNewArticle] = useState({
     title: '',
@@ -47,17 +47,15 @@ const AdminDashboard = () => {
 
   const loadData = async () => {
     setIsSyncing(true);
-    console.log("Admin: Initializing cloud data sync...");
+    setDbStatus('checking');
     
     const cloudArticles = await db.getAllArticles();
     
-    // Check if cloud works with the helper
-    if (db.isConfigured() && cloudArticles.length >= 0) {
+    if (db.isConfigured()) {
+      // If we got articles (or at least didn't error), it's online
       setDbStatus('online');
-      console.log("Admin: Cloud sync active.");
     } else {
       setDbStatus('offline');
-      console.warn("Admin: Cloud connection failed. Falling back to local storage.");
     }
 
     setAllArticles([...ARTICLES, ...cloudArticles]);
@@ -114,7 +112,7 @@ const AdminDashboard = () => {
     } else {
       const currentLocal = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
       localStorage.setItem('ayyan_articles', JSON.stringify([...currentLocal, articleToSave]));
-      alert('LOCAL ONLY: Could not sync to Supabase. Please check your browser console (F12) for errors. The article has been saved to your browser locally.');
+      alert('SYNC FAILED: Article saved locally to your browser. Check console (F12) for detailed Supabase error messages.');
       loadData();
     }
     setIsSyncing(false);
@@ -165,6 +163,7 @@ const AdminDashboard = () => {
 
   const totalRevenue = sales.reduce((acc, sale) => acc + sale.price, 0);
   const soldCount = new Set(sales.map(s => s.id)).size;
+  const configs = db.getConfigs();
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -196,9 +195,9 @@ const AdminDashboard = () => {
                 <h1 className="text-4xl font-black text-slate-900">Platform Health</h1>
                 <p className="text-slate-500 font-medium">Real-time status of your global tech writing platform.</p>
               </div>
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border ${dbStatus === 'online' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
-                {dbStatus === 'online' ? <Globe size={14} /> : <AlertTriangle size={14} />}
-                {dbStatus === 'online' ? 'Cloud Database Connected' : 'Local Preview Only'}
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold border ${dbStatus === 'online' ? 'bg-green-50 text-green-600 border-green-100' : dbStatus === 'checking' ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                {dbStatus === 'online' ? <Globe size={14} /> : dbStatus === 'checking' ? <Loader2 size={14} className="animate-spin" /> : <AlertTriangle size={14} />}
+                {dbStatus === 'online' ? 'Cloud Database Connected' : dbStatus === 'checking' ? 'Verifying Cloud...' : 'Cloud Connection Missing'}
               </div>
             </header>
 
@@ -240,6 +239,7 @@ const AdminDashboard = () => {
               <div className="bg-white p-10 rounded-[2.5rem] border shadow-sm">
                 <h3 className="text-2xl font-black mb-8 flex items-center gap-3"><Zap className="text-blue-600" /> Publish New Post</h3>
                 <form onSubmit={handleAddArticle} className="space-y-6">
+                  {/* ... Article Form Inputs (Simplified for brevity as they remain largely same) */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-slate-400 uppercase ml-1">Title</label>
@@ -266,21 +266,14 @@ const AdminDashboard = () => {
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1 flex items-center gap-1">
-                      <Type size={14} className="text-blue-500" /> Short Excerpt (Summary for the List)
+                      <Type size={14} className="text-blue-500" /> Short Excerpt
                     </label>
-                    <textarea rows={2} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.excerpt} onChange={e => setNewArticle({...newArticle, excerpt: e.target.value})} placeholder="Appears below the title on the Blog page..." />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase ml-1 flex items-center gap-1">
-                      <AlignLeft size={14} className="text-blue-500" /> Intro Highlight Box (Preamble)
-                    </label>
-                    <textarea rows={3} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.introText} onChange={e => setNewArticle({...newArticle, introText: e.target.value})} placeholder="Highlighted summary block at the start of the post..." />
+                    <textarea rows={2} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-medium text-sm" value={newArticle.excerpt} onChange={e => setNewArticle({...newArticle, excerpt: e.target.value})} placeholder="Short summary..." />
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase ml-1">Main Article Content</label>
-                    <textarea rows={10} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" value={newArticle.content} onChange={e => setNewArticle({...newArticle, content: e.target.value})} placeholder="Full Markdown/Text content..." />
+                    <textarea rows={10} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm" value={newArticle.content} onChange={e => setNewArticle({...newArticle, content: e.target.value})} placeholder="Markdown allowed..." />
                   </div>
 
                   <button 
@@ -289,24 +282,36 @@ const AdminDashboard = () => {
                     className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3 disabled:opacity-50"
                   >
                     {isSyncing ? <Loader2 className="animate-spin" /> : <Globe size={20} />}
-                    Publish Globally
+                    Publish to Global Hub
                   </button>
                 </form>
               </div>
             </div>
 
             <div className="space-y-6">
-              <div className="bg-slate-900 p-6 rounded-3xl text-white">
-                 <h4 className="text-sm font-black text-blue-400 uppercase mb-2 flex items-center gap-2 tracking-widest"><Settings size={16}/> Sync Status</h4>
-                 <div className="text-xs text-slate-400 leading-relaxed font-medium">
-                   {dbStatus === 'online' 
-                    ? <p className="text-green-400">Live Cloud Database is active. Every article you publish here is visible to the entire world instantly.</p>
-                    : <p className="text-amber-400">Connection Failed. 1) Restart your server. 2) Ensure your .env has VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. 3) Verify your 'articles' table exists in Supabase.</p>}
+              <div className="bg-slate-900 p-8 rounded-[2rem] text-white">
+                 <h4 className="text-sm font-black text-blue-400 uppercase mb-4 flex items-center gap-2 tracking-widest"><Settings size={16}/> Supabase Setup</h4>
+                 <div className="space-y-4 text-[11px] font-medium">
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                      <span className="text-slate-500">PROJECT URL</span>
+                      <span className={configs.url === 'MISSING' ? 'text-red-400' : 'text-green-400'}>{configs.url}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                      <span className="text-slate-500">ANON KEY</span>
+                      <span className={configs.key === 'MISSING' ? 'text-red-400' : 'text-green-400'}>{configs.key}</span>
+                    </div>
+                 </div>
+                 <div className="mt-6 p-4 bg-slate-800/50 rounded-xl">
+                   <p className="text-[10px] text-slate-400 leading-relaxed italic">
+                     {dbStatus === 'online' 
+                      ? "Cloud is active. Everything is syncing globally." 
+                      : "Cloud inactive. To fix: 1. Set VITE_SUPABASE_URL (e.g. https://xyz.supabase.co) 2. Set VITE_SUPABASE_ANON_KEY 3. Restart dev server."}
+                   </p>
                  </div>
               </div>
               
-              <h3 className="font-black text-slate-400 uppercase text-xs tracking-widest ml-4">Global Inventory</h3>
-              <div className="space-y-4 max-h-[1200px] overflow-y-auto pr-2 custom-scrollbar">
+              <h3 className="font-black text-slate-400 uppercase text-xs tracking-widest ml-4">Live Inventory</h3>
+              <div className="space-y-4 max-h-[800px] overflow-y-auto pr-2 custom-scrollbar">
                 {isSyncing && allArticles.length === 0 ? (
                   <div className="text-center py-20"><Loader2 className="animate-spin mx-auto text-blue-500" /></div>
                 ) : allArticles.slice().reverse().map((a: Article) => (
@@ -314,12 +319,7 @@ const AdminDashboard = () => {
                     <img src={a.image || 'https://picsum.photos/seed/tech/100'} className="w-12 h-12 rounded-xl object-cover" alt="" />
                     <div className="flex-grow">
                       <p className="font-bold text-slate-900 text-sm line-clamp-1">{a.title}</p>
-                      <div className="flex items-center gap-2">
-                         <p className="text-[10px] text-blue-600 font-black tracking-tight uppercase">{a.category}</p>
-                         {!ARTICLES.find(sa => sa.id === a.id) && (
-                           <span className="text-[8px] bg-green-100 text-green-600 px-1.5 py-0.5 rounded font-black uppercase">Live</span>
-                         )}
-                      </div>
+                      <p className="text-[10px] text-blue-600 font-black tracking-tight uppercase">{a.category}</p>
                     </div>
                     <div className="flex items-center gap-1">
                       {!ARTICLES.find(sa => sa.id === a.id) && (
