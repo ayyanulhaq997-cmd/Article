@@ -47,13 +47,17 @@ const AdminDashboard = () => {
 
   const loadData = async () => {
     setIsSyncing(true);
+    console.log("Admin: Initializing cloud data sync...");
+    
     const cloudArticles = await db.getAllArticles();
     
     // Check if cloud works with the helper
-    if (db.isConfigured()) {
+    if (db.isConfigured() && cloudArticles.length >= 0) {
       setDbStatus('online');
+      console.log("Admin: Cloud sync active.");
     } else {
       setDbStatus('offline');
+      console.warn("Admin: Cloud connection failed. Falling back to local storage.");
     }
 
     setAllArticles([...ARTICLES, ...cloudArticles]);
@@ -92,7 +96,6 @@ const AdminDashboard = () => {
       readTime: '5 min'
     };
     
-    // Save to Cloud!
     const success = await db.saveArticle(articleToSave);
     
     if (success) {
@@ -109,23 +112,19 @@ const AdminDashboard = () => {
       });
       loadData();
     } else {
-      // Fallback to local storage
       const currentLocal = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
       localStorage.setItem('ayyan_articles', JSON.stringify([...currentLocal, articleToSave]));
-      alert('LOCAL ONLY: Cloud sync failed. Ensure your Supabase keys are correct and the "articles" table is created. Article saved to your browser locally for now.');
+      alert('LOCAL ONLY: Could not sync to Supabase. Please check your browser console (F12) for errors. The article has been saved to your browser locally.');
       loadData();
     }
     setIsSyncing(false);
   };
 
   const deleteArticle = async (id: string) => {
-    if (confirm('Delete this article from the Cloud?')) {
+    if (confirm('Delete this article?')) {
       setIsSyncing(true);
       const success = await db.deleteArticle(id);
-      if (success) {
-        alert('Deleted from Cloud Database.');
-      } else {
-        // Try local storage delete as fallback
+      if (!success) {
         const currentLocal = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
         localStorage.setItem('ayyan_articles', JSON.stringify(currentLocal.filter((a: any) => a.id !== id)));
       }
@@ -302,7 +301,7 @@ const AdminDashboard = () => {
                  <div className="text-xs text-slate-400 leading-relaxed font-medium">
                    {dbStatus === 'online' 
                     ? <p className="text-green-400">Live Cloud Database is active. Every article you publish here is visible to the entire world instantly.</p>
-                    : <p className="text-amber-400">No Cloud DB detected. Articles are being stored locally in your browser. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set in your .env file and that your server is restarted.</p>}
+                    : <p className="text-amber-400">Connection Failed. 1) Restart your server. 2) Ensure your .env has VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. 3) Verify your 'articles' table exists in Supabase.</p>}
                  </div>
               </div>
               
