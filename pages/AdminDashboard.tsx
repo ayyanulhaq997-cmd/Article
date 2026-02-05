@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -267,7 +266,7 @@ const AdminDashboard = () => {
                         <div className="pt-4 border-t border-slate-200">
                            <h4 className="text-[10px] font-black text-slate-400 uppercase mb-2">Setup Guide</h4>
                            <ul className="text-[10px] space-y-1 text-slate-500 font-medium">
-                             <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-500 rounded-full"></div> Go to Project Settings > API</li>
+                             <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-500 rounded-full"></div> Go to Project Settings and then select API</li>
                              <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-500 rounded-full"></div> Copy "Project URL" (Starts with https)</li>
                              <li className="flex items-center gap-2"><div className="w-1 h-1 bg-blue-500 rounded-full"></div> Copy "anon public" key</li>
                            </ul>
