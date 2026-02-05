@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -112,9 +113,9 @@ const AdminDashboard = () => {
       readTime: '5 min'
     };
     
-    const success = await db.saveArticle(articleToSave);
+    const result = await db.saveArticle(articleToSave);
     
-    if (success) {
+    if (result.success) {
       alert('SUCCESS: Article is live globally.');
       setNewArticle({
         title: '', excerpt: '', introText: '', content: '',
@@ -122,7 +123,9 @@ const AdminDashboard = () => {
       });
       loadData();
     } else {
-      alert('CLOUD SYNC FAILED: Key/URL might be incorrect. Saved to local browser storage.');
+      const errorMsg = result.error || "Unknown Error";
+      alert(`CLOUD SYNC FAILED: ${errorMsg}\n\nSaving a local copy to your browser for now.`);
+      
       const currentLocal = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
       localStorage.setItem('ayyan_articles', JSON.stringify([...currentLocal, articleToSave]));
       loadData();
@@ -285,11 +288,14 @@ const AdminDashboard = () => {
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   excerpt TEXT,
+  introText TEXT,
   content TEXT,
   category TEXT,
   date TEXT,
+  readTime TEXT,
   image TEXT,
-  price NUMERIC
+  price NUMERIC,
+  isPLR BOOLEAN DEFAULT true
 );
 ALTER TABLE articles ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Public Read" ON articles FOR SELECT USING (true);
@@ -318,6 +324,7 @@ CREATE POLICY "Public Write" ON articles FOR INSERT WITH CHECK (true);`}</pre>
                     <input required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none" value={newArticle.image} onChange={e => setNewArticle({...newArticle, image: e.target.value})} placeholder="Image URL" />
                   </div>
                   <textarea rows={2} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-sm" value={newArticle.excerpt} onChange={e => setNewArticle({...newArticle, excerpt: e.target.value})} placeholder="Short summary..." />
+                  <textarea rows={2} className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-sm" value={newArticle.introText} onChange={e => setNewArticle({...newArticle, introText: e.target.value})} placeholder="Intro Quote / Highlight text (Optional)..." />
                   <textarea rows={10} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-mono text-sm" value={newArticle.content} onChange={e => setNewArticle({...newArticle, content: e.target.value})} placeholder="Article Content (Markdown allowed)..." />
                   <button type="submit" disabled={isSyncing} className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold flex items-center justify-center gap-3 shadow-xl disabled:opacity-50">
                     {isSyncing ? <Loader2 className="animate-spin" /> : <Globe size={20} />} Publish Globally
