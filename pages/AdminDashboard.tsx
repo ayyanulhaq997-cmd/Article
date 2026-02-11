@@ -124,10 +124,7 @@ const AdminDashboard = () => {
       loadData();
     } else {
       const errorMsg = result.error || "Unknown Error";
-      alert(`CLOUD SYNC FAILED: ${errorMsg}\n\nSaving a local copy to your browser for now.`);
-      
-      const currentLocal = JSON.parse(localStorage.getItem('ayyan_articles') || '[]');
-      localStorage.setItem('ayyan_articles', JSON.stringify([...currentLocal, articleToSave]));
+      alert(`SYNC FAILED: ${errorMsg}`);
       loadData();
     }
     setIsSyncing(false);

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { articles, type Article, type InsertArticle } from "@shared/schema";
+import { articles, type Article, type InsertArticle } from "../shared/schema";
 import { eq } from "drizzle-orm";
 
 export interface IStorage {

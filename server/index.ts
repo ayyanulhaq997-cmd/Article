@@ -1,6 +1,6 @@
 import express, { type Request, Response } from "express";
 import { storage } from "./storage";
-import { insertArticleSchema } from "@shared/schema";
+import { insertArticleSchema } from "../shared/schema";
 
 const app = express();
 app.use(express.json());

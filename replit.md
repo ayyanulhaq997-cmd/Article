@@ -23,3 +23,4 @@ A personal tech content writer portfolio website built with React, Vite, and Typ
 
 ## Recent Changes
 - 2026-02-11: Initial Replit setup - configured Vite for port 5000, removed import maps in favor of Vite bundling
+- 2026-02-11: Migrated article storage from local storage/Supabase to a centralized Replit PostgreSQL database with an Express backend API.
