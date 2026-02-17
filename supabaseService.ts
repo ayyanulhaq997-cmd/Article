@@ -1,3 +1,4 @@
+
 import { Article } from './types';
 
 const getEnv = (key: string): string => {
@@ -35,52 +36,36 @@ const getCredentials = () => {
 export const db = {
   async testConnection(): Promise<{ success: boolean; message: string }> {
     const { url, key } = getCredentials();
-    if (!url) return { success: false, message: "Missing Project URL. Please check your Supabase API settings." };
-    if (!key) return { success: false, message: "Missing Anon Key. Please check your Supabase API settings." };
-    if (!url.startsWith('https://')) return { success: false, message: "Invalid URL format. It must start with https://" };
+    if (!url) return { success: false, message: "Missing Project URL." };
+    if (!key) return { success: false, message: "Missing Anon Key." };
 
     try {
       const response = await fetch(`${url}/rest/v1/articles?select=id&limit=1`, {
-        headers: {
-          'apikey': key,
-          'Authorization': `Bearer ${key}`
-        }
+        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
       });
-      
-      if (response.ok) {
-        return { success: true, message: "Connection verified! Your database is ready." };
-      } else {
-        const error = await response.json().catch(() => ({ message: 'Table "articles" not found.' }));
-        return { success: false, message: error.message || `API Error: ${response.status}` };
-      }
+      return response.ok 
+        ? { success: true, message: "Cloud Connection Active!" } 
+        : { success: false, message: "Table not found or API restricted." };
     } catch (e) {
-      return { success: false, message: "Connection failed. Please verify your Project URL and internet connection." };
+      return { success: false, message: "Network error. Check your URL." };
     }
   },
 
+  // ARTICLES
   async getAllArticles(): Promise<Article[]> {
     const { url, key } = getCredentials();
     if (!url || !key) return [];
-
     try {
       const response = await fetch(`${url}/rest/v1/articles?select=*`, {
-        headers: {
-          'apikey': key,
-          'Authorization': `Bearer ${key}`
-        }
+        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
       });
-      if (!response.ok) return [];
-      return await response.json();
-    } catch (error) {
-      console.error("Supabase Fetch Error:", error);
-      return [];
-    }
+      return response.ok ? await response.json() : [];
+    } catch { return []; }
   },
 
   async saveArticle(article: Article): Promise<{ success: boolean; error?: string }> {
     const { url, key } = getCredentials();
-    if (!url || !key) return { success: false, error: "Database not configured. Please go to DB Config." };
-
+    if (!url || !key) return { success: false, error: "Database not configured." };
     try {
       const response = await fetch(`${url}/rest/v1/articles`, {
         method: 'POST',
@@ -92,15 +77,8 @@ export const db = {
         },
         body: JSON.stringify(article)
       });
-      
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => ({ message: 'Database rejected the request. Ensure the "articles" table exists with correct columns.' }));
-        return { success: false, error: errorBody.message || "Failed to publish." };
-      }
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: "Network error. Could not reach Supabase." };
-    }
+      return response.ok ? { success: true } : { success: false, error: "Publish failed. Check table schema." };
+    } catch { return { success: false, error: "Network error." }; }
   },
 
   async deleteArticle(id: string): Promise<boolean> {
@@ -109,15 +87,45 @@ export const db = {
     try {
       const response = await fetch(`${url}/rest/v1/articles?id=eq.${id}`, {
         method: 'DELETE',
-        headers: {
-          'apikey': key,
-          'Authorization': `Bearer ${key}`
-        }
+        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
       });
       return response.ok;
-    } catch (error) {
-      return false;
-    }
+    } catch { return false; }
+  },
+
+  // SALES (NEW: CLOUD STORAGE)
+  async getAllSales(): Promise<any[]> {
+    const { url, key } = getCredentials();
+    if (!url || !key) return [];
+    try {
+      const response = await fetch(`${url}/rest/v1/sales?select=*&order=created_at.desc`, {
+        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` }
+      });
+      return response.ok ? await response.json() : [];
+    } catch { return []; }
+  },
+
+  async recordSale(saleData: any): Promise<boolean> {
+    const { url, key } = getCredentials();
+    if (!url || !key) return false;
+    try {
+      const response = await fetch(`${url}/rest/v1/sales`, {
+        method: 'POST',
+        headers: {
+          'apikey': key,
+          'Authorization': `Bearer ${key}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          article_id: saleData.itemId,
+          order_id: saleData.orderId,
+          item_name: saleData.itemName,
+          amount: saleData.price,
+          created_at: new Date().toISOString()
+        })
+      });
+      return response.ok;
+    } catch { return false; }
   },
 
   isConfigured(): boolean {
