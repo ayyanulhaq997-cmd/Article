@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
@@ -20,7 +21,8 @@ import {
   Database,
   ArrowRight,
   Info,
-  DatabaseZap
+  DatabaseZap,
+  ShieldCheck
 } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { Category, Article } from '../types';
@@ -101,7 +103,7 @@ const AdminDashboard = () => {
       setNewArticle({ title: '', excerpt: '', introText: '', content: '', category: Category.Serverless, price: 45, image: '', isPLR: true });
       loadData();
     } else {
-      alert(`ERROR: ${result.error}`);
+      alert(`ERROR: ${result.error}\n\nTIP: If it says 'column not found', go to DB Config and run the 'Fix Missing Columns' SQL.`);
     }
     setIsSyncing(false);
   };
@@ -119,18 +121,18 @@ const AdminDashboard = () => {
     }
   };
 
-  const sqlCode = `CREATE TABLE articles (
+  const sqlCode = `CREATE TABLE IF NOT EXISTS articles (
   id TEXT PRIMARY KEY,
   title TEXT NOT NULL,
   excerpt TEXT,
-  introText TEXT,
+  "introText" TEXT,
   content TEXT,
   category TEXT,
   date TEXT,
-  readTime TEXT,
+  "readTime" TEXT,
   image TEXT,
   price NUMERIC,
-  isPLR BOOLEAN DEFAULT true
+  "isPLR" BOOLEAN DEFAULT true
 );
 
 -- Security Rules
@@ -139,9 +141,13 @@ CREATE POLICY "Public Read" ON articles FOR SELECT USING (true);
 CREATE POLICY "Public Insert" ON articles FOR INSERT WITH CHECK (true);
 CREATE POLICY "Public Delete" ON articles FOR DELETE USING (true);`;
 
-  const copySql = () => {
-    navigator.clipboard.writeText(sqlCode);
-    alert('SQL copied! Paste this in your Supabase SQL Editor.');
+  const fixSql = `ALTER TABLE articles ADD COLUMN IF NOT EXISTS "introText" TEXT;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS "readTime" TEXT;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS "isPLR" BOOLEAN DEFAULT true;`;
+
+  const copySql = (code: string) => {
+    navigator.clipboard.writeText(code);
+    alert('SQL code copied to clipboard!');
   };
 
   if (!isLoggedIn) {
@@ -276,23 +282,32 @@ CREATE POLICY "Public Delete" ON articles FOR DELETE USING (true);`;
                     <div className="absolute top-0 right-0 w-40 h-40 bg-blue-600/10 rounded-full blur-3xl"></div>
                     <div className="flex items-center gap-4 relative z-10">
                       <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black">2</div>
-                      <h3 className="text-xl font-bold">Initialize SQL Table</h3>
+                      <h3 className="text-xl font-bold text-blue-400">Database Setup (Fix Errors)</h3>
                     </div>
 
-                    <p className="text-slate-400 text-sm leading-relaxed relative z-10 font-medium">
-                      Ensure your database is ready by running this SQL script in your Supabase **SQL Editor**. This creates the required table and security policies.
-                    </p>
+                    <div className="space-y-6 relative z-10">
+                      <div>
+                        <p className="text-xs font-black uppercase text-slate-500 mb-2 tracking-widest">New Setup SQL</p>
+                        <p className="text-slate-400 text-[11px] mb-4">Run this if you haven't created the table yet.</p>
+                        <div className="bg-black/50 p-4 rounded-xl border border-slate-800 relative group">
+                          <button onClick={() => copySql(sqlCode)} className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-blue-600 rounded text-slate-400 hover:text-white transition-all"><Copy size={12} /></button>
+                          <pre className="text-[9px] font-mono text-blue-300 leading-tight overflow-x-auto custom-scrollbar whitespace-pre-wrap">{sqlCode.substring(0, 100)}...</pre>
+                        </div>
+                      </div>
 
-                    <div className="bg-black/50 p-6 rounded-2xl border border-slate-800 relative group">
-                      <button onClick={copySql} className="absolute top-4 right-4 p-2 bg-slate-800 hover:bg-blue-600 rounded-lg text-slate-400 hover:text-white transition-all opacity-0 group-hover:opacity-100 flex items-center gap-2 text-[10px] font-black uppercase"><Copy size={12} /> Copy SQL</button>
-                      <pre className="text-[10px] font-mono text-blue-300 leading-relaxed overflow-x-auto custom-scrollbar whitespace-pre-wrap">
-                        {sqlCode}
-                      </pre>
-                    </div>
+                      <div className="p-5 bg-blue-600/10 border border-blue-500/20 rounded-2xl">
+                        <p className="text-xs font-black uppercase text-blue-400 mb-2 tracking-widest flex items-center gap-2">
+                          <ShieldCheck size={14} /> Fix Schema Errors
+                        </p>
+                        <p className="text-slate-400 text-[11px] mb-4">If you get an error saying <b>"Could not find the 'introText' column"</b>, run this fix script in your SQL Editor:</p>
+                        <div className="bg-black/50 p-4 rounded-xl border border-slate-800 relative group">
+                          <button onClick={() => copySql(fixSql)} className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-blue-600 rounded text-slate-400 hover:text-white transition-all flex items-center gap-2 text-[8px] font-black"><Copy size={10} /> COPY FIX</button>
+                          <pre className="text-[9px] font-mono text-emerald-400 leading-tight">{fixSql}</pre>
+                        </div>
+                      </div>
 
-                    <div className="flex gap-4 pt-4 relative z-10">
-                      <a href="https://supabase.com/dashboard" target="_blank" className="flex-grow py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-center text-xs flex items-center justify-center gap-2 transition-all">
-                        Go to Supabase Dashboard <ExternalLink size={14} />
+                      <a href="https://supabase.com/dashboard" target="_blank" className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-center text-xs flex items-center justify-center gap-2 transition-all">
+                        Go to Supabase SQL Editor <ExternalLink size={14} />
                       </a>
                     </div>
                   </div>
