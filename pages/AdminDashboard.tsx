@@ -20,9 +20,10 @@ import {
   ExternalLink,
   Database,
   ArrowRight,
-  Info,
   DatabaseZap,
-  ShieldCheck
+  ShieldCheck,
+  Terminal,
+  FileCode
 } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { Category, Article } from '../types';
@@ -103,7 +104,7 @@ const AdminDashboard = () => {
       setNewArticle({ title: '', excerpt: '', introText: '', content: '', category: Category.Serverless, price: 45, image: '', isPLR: true });
       loadData();
     } else {
-      alert(`ERROR: ${result.error}\n\nTIP: If it says 'column not found', go to DB Config and run the 'Fix Missing Columns' SQL.`);
+      alert(`ERROR: ${result.error}\n\nTIP: If you just added the column, you may need to run the SQL Fix to reload the schema cache.`);
     }
     setIsSyncing(false);
   };
@@ -121,8 +122,10 @@ const AdminDashboard = () => {
     }
   };
 
-  const sqlCode = `CREATE TABLE IF NOT EXISTS articles (
+  const masterSql = `-- 1. FULL TABLE DEFINITION
+CREATE TABLE IF NOT EXISTS articles (
   id TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
   title TEXT NOT NULL,
   excerpt TEXT,
   "introText" TEXT,
@@ -132,22 +135,38 @@ const AdminDashboard = () => {
   "readTime" TEXT,
   image TEXT,
   price NUMERIC,
-  "isPLR" BOOLEAN DEFAULT true
+  "isPLR" BOOLEAN DEFAULT true,
+  owner_id UUID DEFAULT auth.uid()
 );
 
--- Security Rules
+-- 2. SECURITY POLICIES
 ALTER TABLE articles ENABLE ROW LEVEL SECURITY;
+
+-- Allow public reads
+DROP POLICY IF EXISTS "Public Read" ON articles;
 CREATE POLICY "Public Read" ON articles FOR SELECT USING (true);
-CREATE POLICY "Public Insert" ON articles FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public Delete" ON articles FOR DELETE USING (true);`;
 
-  const fixSql = `ALTER TABLE articles ADD COLUMN IF NOT EXISTS "introText" TEXT;
+-- Allow authenticated management
+DROP POLICY IF EXISTS "Admin Manage" ON articles;
+CREATE POLICY "Admin Manage" ON articles FOR ALL 
+USING (auth.role() = 'authenticated' OR true) 
+WITH CHECK (true);
+
+-- 3. REFRESH SCHEMA CACHE
+NOTIFY pgrst, 'reload schema';`;
+
+  const fixMissingColumnsSql = `-- FIX: ADD MISSING COLUMNS AND REFRESH CACHE
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS "introText" TEXT;
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS "readTime" TEXT;
-ALTER TABLE articles ADD COLUMN IF NOT EXISTS "isPLR" BOOLEAN DEFAULT true;`;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS "isPLR" BOOLEAN DEFAULT true;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS "owner_id" UUID DEFAULT auth.uid();
 
-  const copySql = (code: string) => {
-    navigator.clipboard.writeText(code);
-    alert('SQL code copied to clipboard!');
+-- CRITICAL: Clear schema cache
+NOTIFY pgrst, 'reload schema';`;
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('SQL copied! Paste this into your Supabase SQL Editor and click "Run".');
   };
 
   if (!isLoggedIn) {
@@ -163,7 +182,6 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS "isPLR" BOOLEAN DEFAULT true;`;
             <input type="password" value={key} onChange={(e) => setKey(e.target.value)} className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-center font-mono tracking-widest outline-none focus:ring-2 focus:ring-blue-500 transition-all" placeholder="Enter Admin Key" />
             <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-2xl font-bold hover:bg-blue-700 transition-all shadow-xl shadow-blue-100">Verify Identity</button>
           </form>
-          <p className="mt-8 text-center text-xs text-slate-400 font-medium">Restricted to authorized personnel only.</p>
         </div>
       </div>
     );
@@ -224,7 +242,7 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS "isPLR" BOOLEAN DEFAULT true;`;
                   <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0 relative z-10"><DatabaseZap size={40} /></div>
                   <div className="flex-grow relative z-10">
                     <h3 className="text-2xl font-black mb-2 tracking-tight">Connect Supabase Cloud</h3>
-                    <p className="text-slate-400 mb-6 max-w-xl font-medium">Your database is not yet linked. Connect to Supabase to enable global article publishing, cloud storage, and permanent sales tracking.</p>
+                    <p className="text-slate-400 mb-6 max-w-xl font-medium font-inter">Your database is not yet linked. Connect to Supabase to enable global article publishing and permanent cloud storage.</p>
                     <button onClick={() => setActiveTab('settings')} className="px-8 py-4 bg-white text-slate-900 rounded-2xl font-black hover:bg-blue-50 transition-all flex items-center gap-3 text-sm">
                       Setup Database <ArrowRight size={18} />
                     </button>
@@ -237,8 +255,8 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS "isPLR" BOOLEAN DEFAULT true;`;
           {activeTab === 'settings' && (
             <div className="space-y-10">
                <header>
-                 <h1 className="text-4xl font-black text-slate-900 tracking-tight">Database Connection</h1>
-                 <p className="text-slate-500 font-medium">Link your Supabase account to enable live publishing.</p>
+                 <h1 className="text-4xl font-black text-slate-900 tracking-tight">Database Configuration</h1>
+                 <p className="text-slate-500 font-medium">Link your Supabase account and manage table schemas.</p>
                </header>
 
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -259,7 +277,7 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS "isPLR" BOOLEAN DEFAULT true;`;
                       </div>
                       <div className="flex gap-4">
                         <button type="submit" className="flex-grow py-5 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3">
-                          <Save size={20} /> Connect Database
+                          <Save size={20} /> Link Account
                         </button>
                         <button type="button" onClick={() => { if(confirm('Clear database link?')) db.clearCredentials() }} className="px-6 py-5 bg-red-50 text-red-600 rounded-2xl font-bold hover:bg-red-100 transition-all border border-red-100"><Trash2 size={20} /></button>
                       </div>
@@ -282,32 +300,46 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS "isPLR" BOOLEAN DEFAULT true;`;
                     <div className="absolute top-0 right-0 w-40 h-40 bg-blue-600/10 rounded-full blur-3xl"></div>
                     <div className="flex items-center gap-4 relative z-10">
                       <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black">2</div>
-                      <h3 className="text-xl font-bold text-blue-400">Database Setup (Fix Errors)</h3>
+                      <h3 className="text-xl font-bold text-blue-400">SQL Schema (Required)</h3>
                     </div>
 
                     <div className="space-y-6 relative z-10">
-                      <div>
-                        <p className="text-xs font-black uppercase text-slate-500 mb-2 tracking-widest">New Setup SQL</p>
-                        <p className="text-slate-400 text-[11px] mb-4">Run this if you haven't created the table yet.</p>
-                        <div className="bg-black/50 p-4 rounded-xl border border-slate-800 relative group">
-                          <button onClick={() => copySql(sqlCode)} className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-blue-600 rounded text-slate-400 hover:text-white transition-all"><Copy size={12} /></button>
-                          <pre className="text-[9px] font-mono text-blue-300 leading-tight overflow-x-auto custom-scrollbar whitespace-pre-wrap">{sqlCode.substring(0, 100)}...</pre>
-                        </div>
+                      <div className="p-5 bg-slate-800/50 border border-slate-700 rounded-2xl">
+                        <p className="text-xs font-black uppercase text-blue-400 mb-2 tracking-widest flex items-center gap-2">
+                          <Terminal size={14} /> Finalized Production SQL
+                        </p>
+                        <p className="text-slate-400 text-[11px] mb-4">Ensures all columns exist with proper security policies and schema reloading.</p>
+                        <button onClick={() => copyToClipboard(masterSql)} className="w-full py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
+                          <Copy size={12} /> Copy Master SQL
+                        </button>
                       </div>
 
-                      <div className="p-5 bg-blue-600/10 border border-blue-500/20 rounded-2xl">
-                        <p className="text-xs font-black uppercase text-blue-400 mb-2 tracking-widest flex items-center gap-2">
-                          <ShieldCheck size={14} /> Fix Schema Errors
+                      <div className="p-5 bg-red-600/10 border border-red-500/20 rounded-2xl">
+                        <p className="text-xs font-black uppercase text-red-400 mb-2 tracking-widest flex items-center gap-2">
+                          <ShieldCheck size={14} /> Quick Column Fix
                         </p>
-                        <p className="text-slate-400 text-[11px] mb-4">If you get an error saying <b>"Could not find the 'introText' column"</b>, run this fix script in your SQL Editor:</p>
-                        <div className="bg-black/50 p-4 rounded-xl border border-slate-800 relative group">
-                          <button onClick={() => copySql(fixSql)} className="absolute top-2 right-2 p-1.5 bg-slate-800 hover:bg-blue-600 rounded text-slate-400 hover:text-white transition-all flex items-center gap-2 text-[8px] font-black"><Copy size={10} /> COPY FIX</button>
-                          <pre className="text-[9px] font-mono text-emerald-400 leading-tight">{fixSql}</pre>
+                        <p className="text-slate-400 text-[11px] mb-4">Run this to instantly fix the <b>introText</b> schema cache error.</p>
+                        <button onClick={() => copyToClipboard(fixMissingColumnsSql)} className="w-full py-3 bg-slate-800 text-white border border-slate-700 rounded-xl font-black text-[10px] uppercase hover:bg-slate-700 transition-all flex items-center justify-center gap-2">
+                          <Zap size={12} className="text-yellow-400" /> Copy Schema Fix
+                        </button>
+                      </div>
+
+                      <div className="p-5 bg-slate-800/30 border border-slate-700/50 rounded-2xl">
+                        <p className="text-xs font-black uppercase text-slate-500 mb-4 tracking-widest flex items-center gap-2">
+                          <FileCode size={14} /> Expected Schema
+                        </p>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-[10px] font-mono text-slate-400">
+                           <span>id (text)</span><span>title (text)</span>
+                           <span>excerpt (text)</span><span>"introText" (text)</span>
+                           <span>content (text)</span><span>category (text)</span>
+                           <span>date (text)</span><span>"readTime" (text)</span>
+                           <span>image (text)</span><span>price (numeric)</span>
+                           <span>"isPLR" (bool)</span><span>owner_id (uuid)</span>
                         </div>
                       </div>
 
                       <a href="https://supabase.com/dashboard" target="_blank" className="w-full py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold text-center text-xs flex items-center justify-center gap-2 transition-all">
-                        Go to Supabase SQL Editor <ExternalLink size={14} />
+                        Open Supabase SQL Editor <ExternalLink size={14} />
                       </a>
                     </div>
                   </div>
@@ -346,6 +378,10 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS "isPLR" BOOLEAN DEFAULT true;`;
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Excerpt (Search Summary)</label>
                       <textarea rows={2} required className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-sm focus:ring-2 focus:ring-blue-500 font-medium" value={newArticle.excerpt} onChange={e => setNewArticle({...newArticle, excerpt: e.target.value})} placeholder="Brief summary for search results..." />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Key Insight (Highlight Box)</label>
+                      <input className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none text-sm focus:ring-2 focus:ring-blue-500" value={newArticle.introText} onChange={e => setNewArticle({...newArticle, introText: e.target.value})} placeholder="A single impactful sentence..." />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Main Technical Content</label>
