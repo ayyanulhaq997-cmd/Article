@@ -14,17 +14,14 @@ import {
   Zap, 
   Loader2, 
   Settings,
-  Save,
   RefreshCw,
   Copy,
-  ExternalLink,
-  ArrowRight,
-  DatabaseZap,
-  Terminal,
-  FileCode,
   TrendingUp,
   Cloud,
-  FileText
+  DatabaseZap,
+  ShieldCheck, // Fix: Added missing ShieldCheck import
+  Terminal,
+  FileCode
 } from 'lucide-react';
 import { ARTICLES } from '../constants';
 import { Category, Article } from '../types';
@@ -40,9 +37,6 @@ const AdminDashboard = () => {
   const [sales, setSales] = useState<any[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [dbStatus, setDbStatus] = useState<'online' | 'offline' | 'checking'>('checking');
-  
-  const [manualUrl, setManualUrl] = useState('');
-  const [manualKey, setManualKey] = useState('');
   const [testResult, setTestResult] = useState<{success?: boolean, message: string} | null>(null);
 
   const [newArticle, setNewArticle] = useState({
@@ -84,11 +78,7 @@ const AdminDashboard = () => {
     setTestResult({ message: 'Running diagnostic...' });
     const res = await db.testConnection();
     setTestResult(res);
-  };
-
-  const handleSaveCredentials = (e: React.FormEvent) => {
-    e.preventDefault();
-    db.setManualCredentials(manualUrl, manualKey);
+    setDbStatus(res.success ? 'online' : 'offline');
   };
 
   const handleAddArticle = async (e: React.FormEvent) => {
@@ -103,17 +93,17 @@ const AdminDashboard = () => {
     
     const result = await db.saveArticle(articleToSave);
     if (result.success) {
-      alert('SUCCESS: Your article is now permanently stored in the Supabase cloud!');
+      alert('SUCCESS: Article published to Supabase Cloud!');
       setNewArticle({ title: '', excerpt: '', introText: '', content: '', category: Category.Serverless, price: 45, image: '', isPLR: true });
       loadData();
     } else {
-      alert(`ERROR: ${result.error}`);
+      alert(`ERROR: ${result.error}. Make sure you have run the SQL script in your Supabase dashboard.`);
     }
     setIsSyncing(false);
   };
 
   const deleteArticle = async (id: string) => {
-    if (confirm('Delete this article from cloud? This action cannot be undone.')) {
+    if (confirm('Delete from cloud?')) {
       setIsSyncing(true);
       await db.deleteArticle(id);
       loadData();
@@ -134,8 +124,7 @@ CREATE TABLE IF NOT EXISTS articles (
   "readTime" TEXT,
   image TEXT,
   price NUMERIC,
-  "isPLR" BOOLEAN DEFAULT true,
-  owner_id UUID DEFAULT auth.uid()
+  "isPLR" BOOLEAN DEFAULT true
 );
 
 -- 2. SALES TABLE
@@ -148,25 +137,21 @@ CREATE TABLE IF NOT EXISTS sales (
   amount NUMERIC
 );
 
--- 3. SECURITY
+-- 3. ENABLE SECURITY
 ALTER TABLE articles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sales ENABLE ROW LEVEL SECURITY;
 
--- 4. POLICIES (Allow all for anon while you set up admin auth)
-CREATE POLICY "Public Read" ON articles FOR SELECT USING (true);
-CREATE POLICY "Public Insert" ON articles FOR INSERT WITH CHECK (true);
-CREATE POLICY "Public Update" ON articles FOR UPDATE USING (true);
-CREATE POLICY "Public Delete" ON articles FOR DELETE USING (true);
+-- 4. POLICIES (Allow public access for now)
+CREATE POLICY "Allow Public Read" ON articles FOR SELECT USING (true);
+CREATE POLICY "Allow Public Insert" ON articles FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow Public Delete" ON articles FOR DELETE USING (true);
 
-CREATE POLICY "Public Read Sales" ON sales FOR SELECT USING (true);
-CREATE POLICY "Public Insert Sales" ON sales FOR INSERT WITH CHECK (true);
-
--- 5. REFRESH
-NOTIFY pgrst, 'reload schema';`;
+CREATE POLICY "Allow Public Read Sales" ON sales FOR SELECT USING (true);
+CREATE POLICY "Allow Public Insert Sales" ON sales FOR INSERT WITH CHECK (true);`;
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert('SQL copied! Paste this into Supabase SQL Editor.');
+    alert('SQL copied! Paste this into your Supabase SQL Editor and click RUN.');
   };
 
   if (!isLoggedIn) {
@@ -188,7 +173,6 @@ NOTIFY pgrst, 'reload schema';`;
   }
 
   const totalRevenue = sales.reduce((acc, sale) => acc + (Number(sale.amount) || 0), 0);
-  const totalArticles = ARTICLES.length + cloudArticles.length;
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -198,7 +182,7 @@ NOTIFY pgrst, 'reload schema';`;
           <button onClick={() => setActiveTab('overview')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeTab === 'overview' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}><LayoutDashboard size={18} /> Dashboard</button>
           <button onClick={() => setActiveTab('articles')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeTab === 'articles' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}><PlusCircle size={18} /> Manage Content</button>
           <button onClick={() => setActiveTab('sales')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeTab === 'sales' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}><TrendingUp size={18} /> Sales & Analytics</button>
-          <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeTab === 'settings' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}><Settings size={18} /> DB Config</button>
+          <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold transition-all ${activeTab === 'settings' ? 'bg-blue-600 shadow-lg shadow-blue-900/50' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}><Settings size={18} /> Infrastructure</button>
         </nav>
         <button onClick={() => { sessionStorage.clear(); window.location.reload(); }} className="flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold text-slate-500 hover:text-red-400 transition-colors mt-auto"><LogOut size={18} /> Sign Out</button>
       </aside>
@@ -210,8 +194,8 @@ NOTIFY pgrst, 'reload schema';`;
             <>
               <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
                 <div>
-                  <h1 className="text-4xl font-black text-slate-900 tracking-tight">Cloud Overview</h1>
-                  <p className="text-slate-500 font-medium">Monitoring real-time database transactions.</p>
+                  <h1 className="text-4xl font-black text-slate-900 tracking-tight">Overview</h1>
+                  <p className="text-slate-500 font-medium">Real-time cloud database monitoring.</p>
                 </div>
                 <div className={`flex items-center gap-3 px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-widest border ${dbStatus === 'online' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
                   <div className={`w-2 h-2 rounded-full ${dbStatus === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></div>
@@ -220,29 +204,20 @@ NOTIFY pgrst, 'reload schema';`;
               </header>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 group transition-all">
+                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
                   <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6"><DollarSign size={28} /></div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Revenue</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Lifetime Revenue</p>
                   <h3 className="text-4xl font-black text-slate-900">${totalRevenue.toFixed(2)}</h3>
                 </div>
-                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 group transition-all">
+                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
                   <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-6"><CheckCircle size={28} /></div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Orders Processed</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Sales</p>
                   <h3 className="text-4xl font-black text-slate-900">{sales.length}</h3>
                 </div>
-                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 group transition-all">
+                <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
                   <div className="w-14 h-14 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mb-6"><Cloud size={28} /></div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Articles Published</p>
-                  <h3 className="text-4xl font-black text-slate-900">{totalArticles}</h3>
-                </div>
-              </div>
-
-              <div className="bg-slate-900 text-white rounded-[3rem] p-10 flex flex-col md:flex-row gap-10 items-center border border-slate-800 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/10 rounded-full blur-3xl"></div>
-                <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0 relative z-10"><DatabaseZap size={40} /></div>
-                <div className="flex-grow relative z-10 text-center md:text-left">
-                  <h3 className="text-2xl font-black mb-2 tracking-tight">Cloud Database Active</h3>
-                  <p className="text-slate-400 mb-6 max-w-xl font-medium font-inter">Your site is now directly connected to Supabase. All content added here will appear live on the blog instantly without relying on local storage.</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cloud Articles</p>
+                  <h3 className="text-4xl font-black text-slate-900">{cloudArticles.length}</h3>
                 </div>
               </div>
             </>
@@ -276,43 +251,23 @@ NOTIFY pgrst, 'reload schema';`;
               </div>
 
               <div className="space-y-6">
-                <div className="flex justify-between items-center px-4">
-                  <h3 className="font-black text-slate-400 uppercase text-xs tracking-widest">Article Inventory</h3>
-                  <button onClick={loadData} className="p-2 text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><RefreshCw size={16} /></button>
-                </div>
-                
+                <h3 className="font-black text-slate-400 uppercase text-xs tracking-widest px-4">Cloud Inventory</h3>
                 <div className="space-y-4">
-                  {/* Cloud Articles */}
-                  {cloudArticles.length > 0 && (
-                    <div className="space-y-3">
-                      <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-4">Live Cloud Data</p>
-                      {cloudArticles.map((a: Article) => (
-                        <div key={a.id} className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm flex items-center gap-4 group">
-                          <img src={a.image} className="w-10 h-10 rounded-lg object-cover" alt="" />
-                          <div className="flex-grow">
-                            <p className="font-bold text-slate-900 text-xs line-clamp-1">{a.title}</p>
-                            <p className="text-[9px] text-emerald-600 font-black uppercase">Cloud Post</p>
-                          </div>
-                          <button onClick={() => deleteArticle(a.id)} className="p-2 text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
-                        </div>
-                      ))}
+                  {cloudArticles.map((a: Article) => (
+                    <div key={a.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4 group">
+                      <img src={a.image} className="w-10 h-10 rounded-lg object-cover" alt="" />
+                      <div className="flex-grow">
+                        <p className="font-bold text-slate-900 text-xs line-clamp-1">{a.title}</p>
+                        <p className="text-[9px] text-emerald-600 font-black uppercase">Live Post</p>
+                      </div>
+                      <button onClick={() => deleteArticle(a.id)} className="p-2 text-slate-300 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100"><Trash2 size={16} /></button>
+                    </div>
+                  ))}
+                  {cloudArticles.length === 0 && (
+                    <div className="text-center py-10 bg-white rounded-2xl border-2 border-dashed border-slate-100">
+                      <p className="text-xs text-slate-400 font-medium italic">No articles in cloud.</p>
                     </div>
                   )}
-
-                  {/* System Defaults */}
-                  <div className="space-y-3 pt-4">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">System Defaults (Read Only)</p>
-                    {ARTICLES.map((a: Article) => (
-                        <div key={a.id} className="bg-slate-100 p-4 rounded-2xl border border-slate-200 flex items-center gap-4 opacity-60">
-                          <img src={a.image} className="w-10 h-10 rounded-lg object-cover grayscale" alt="" />
-                          <div className="flex-grow">
-                            <p className="font-bold text-slate-900 text-xs line-clamp-1">{a.title}</p>
-                            <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest">Static File</p>
-                          </div>
-                          <Lock size={14} className="text-slate-400" />
-                        </div>
-                    ))}
-                  </div>
                 </div>
               </div>
             </div>
@@ -320,27 +275,28 @@ NOTIFY pgrst, 'reload schema';`;
 
           {activeTab === 'sales' && (
             <div className="bg-white p-12 rounded-[3rem] border border-slate-100 shadow-sm">
-               <h3 className="text-3xl font-black text-slate-900 mb-8 flex items-center gap-4"><TrendingUp className="text-emerald-600" /> Cloud Sales Registry</h3>
+               <h3 className="text-3xl font-black text-slate-900 mb-8 flex items-center gap-4">Cloud Registry</h3>
                <div className="overflow-x-auto">
                  <table className="w-full text-left">
                    <thead>
                      <tr className="border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                        <th className="pb-6">Date</th>
-                       <th className="pb-6">Item Name</th>
-                       <th className="pb-6">Order Reference</th>
+                       <th className="pb-6">Item</th>
+                       <th className="pb-6">Ref ID</th>
                        <th className="pb-6 text-right">Revenue</th>
                      </tr>
                    </thead>
                    <tbody>
-                     {sales.length > 0 ? sales.map((sale, i) => (
+                     {sales.map((sale, i) => (
                        <tr key={i} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
                          <td className="py-6 text-slate-500 font-medium">{new Date(sale.created_at).toLocaleDateString()}</td>
                          <td className="py-6 font-bold text-slate-900">{sale.item_name}</td>
                          <td className="py-6 font-mono text-[10px] text-blue-600">{sale.order_id}</td>
                          <td className="py-6 font-black text-emerald-600 text-right">+${Number(sale.amount).toFixed(2)}</td>
                        </tr>
-                     )) : (
-                       <tr><td colSpan={4} className="py-20 text-center text-slate-400 font-medium">No sales recorded in the cloud yet.</td></tr>
+                     ))}
+                     {sales.length === 0 && (
+                       <tr><td colSpan={4} className="py-20 text-center text-slate-400">No cloud sales recorded.</td></tr>
                      )}
                    </tbody>
                  </table>
@@ -351,27 +307,24 @@ NOTIFY pgrst, 'reload schema';`;
           {activeTab === 'settings' && (
             <div className="space-y-10">
                <header>
-                 <h1 className="text-4xl font-black text-slate-900 tracking-tight">Database Infrastructure</h1>
-                 <p className="text-slate-500 font-medium">Connect and manage your cloud backbone.</p>
+                 <h1 className="text-4xl font-black text-slate-900 tracking-tight">Cloud Backbone</h1>
+                 <p className="text-slate-500 font-medium">Monitoring your Supabase infrastructure.</p>
                </header>
 
                <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                   <div className="bg-white p-10 rounded-[2.5rem] border border-slate-100 shadow-sm space-y-8">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black">1</div>
-                      <h3 className="text-xl font-bold text-slate-900">Supabase Auth</h3>
+                      <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black"><ShieldCheck size={20} /></div>
+                      <h3 className="text-xl font-bold text-slate-900">Status Check</h3>
                     </div>
                     
-                    <form onSubmit={handleSaveCredentials} className="space-y-6">
-                      <input value={manualUrl} onChange={e => setManualUrl(e.target.value)} required placeholder="Supabase Project URL" className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-mono text-xs" />
-                      <input value={manualKey} onChange={e => setManualKey(e.target.value)} required type="password" placeholder="Anon / Public Key" className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none font-mono text-xs" />
-                      <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-all flex items-center justify-center gap-3">
-                        <Save size={20} /> Update Credentials
-                      </button>
-                    </form>
+                    <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100">
+                      <p className="text-sm font-bold text-slate-900 mb-2">Connected Project:</p>
+                      <p className="text-xs font-mono text-blue-600 break-all">https://qbsjzxbuolqsxulyhguw.supabase.co</p>
+                    </div>
 
-                    <button onClick={handleTestConnection} className="w-full py-4 bg-white border border-slate-200 text-slate-900 rounded-xl font-black text-xs hover:bg-slate-50 transition-all flex items-center justify-center gap-3 shadow-sm uppercase tracking-widest">
-                        <RefreshCw size={16} /> Run Diagnostics
+                    <button onClick={handleTestConnection} className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black hover:bg-blue-700 transition-all flex items-center justify-center gap-3">
+                        <RefreshCw size={20} /> Run Diagnostics
                     </button>
                     {testResult && (
                         <div className={`p-4 rounded-xl text-xs font-bold border flex items-center gap-3 ${testResult.success ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-700 border-red-100'}`}>
@@ -383,7 +336,7 @@ NOTIFY pgrst, 'reload schema';`;
 
                   <div className="bg-slate-900 text-white p-10 rounded-[2.5rem] shadow-2xl space-y-8">
                     <div className="flex items-center gap-4 relative z-10">
-                      <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black">2</div>
+                      <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center font-black"><Terminal size={20} /></div>
                       <h3 className="text-xl font-bold text-blue-400">Database Schema</h3>
                     </div>
 
@@ -396,16 +349,6 @@ NOTIFY pgrst, 'reload schema';`;
                         <button onClick={() => copyToClipboard(masterSql)} className="w-full py-3 bg-blue-600 text-white rounded-xl font-black text-[10px] uppercase hover:bg-blue-700 transition-all flex items-center justify-center gap-2">
                           <Copy size={12} /> Copy Initialization SQL
                         </button>
-                      </div>
-
-                      <div className="p-5 bg-slate-800/30 border border-slate-700/50 rounded-2xl">
-                        <p className="text-xs font-black uppercase text-slate-500 mb-4 tracking-widest flex items-center gap-2">
-                          <FileCode size={14} /> Expected Tables
-                        </p>
-                        <ul className="text-[10px] font-mono text-slate-400 space-y-1">
-                           <li>- public.articles (id, title, excerpt, content...)</li>
-                           <li>- public.sales (id, article_id, order_id, amount...)</li>
-                        </ul>
                       </div>
                     </div>
                   </div>
