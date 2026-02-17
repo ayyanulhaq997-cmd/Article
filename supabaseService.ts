@@ -7,10 +7,9 @@ let SUPABASE_URL = 'https://qbsjzxbuolqsxulyhguw.supabase.co';
 let SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFic2p6eGJ1b2xxc3h1bHloZ3V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTU3NTEsImV4cCI6MjA4NTg3MTc1MX0.2k6Ve0eNTD8UzkNfDOzlmEmesZ3LM1AVFoIMJibGpTQ';
 
 // Initialize the official Supabase client
-let supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+export let supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 export const db = {
-  // Fix: Added setManualCredentials to allow updating credentials at runtime as required by AdminDashboard.tsx
   /**
    * Updates Supabase credentials at runtime and re-initializes the client.
    */
@@ -18,6 +17,20 @@ export const db = {
     SUPABASE_URL = url;
     SUPABASE_KEY = key;
     supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  },
+
+  // AUTH
+  async login(email: string, pass: string) {
+    return await supabase.auth.signInWithPassword({ email, password: pass });
+  },
+
+  async logout() {
+    return await supabase.auth.signOut();
+  },
+
+  async getUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
   },
 
   /**
@@ -73,7 +86,6 @@ export const db = {
 
   async saveArticle(article: Article): Promise<{ success: boolean; error?: string }> {
     try {
-      // We map the object to ensure only valid columns are sent
       const payload = {
         id: article.id,
         title: article.title,
@@ -93,7 +105,7 @@ export const db = {
       return { success: true };
     } catch (e: any) {
       console.error("Save article error:", e);
-      return { success: false, error: e.message || "Cloud insert failed. Ensure tables are created." };
+      return { success: false, error: e.message || "Cloud insert failed. Ensure you are signed in as an Admin and RLS allows writes." };
     }
   },
 
