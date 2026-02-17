@@ -9,6 +9,7 @@ const Navbar = () => {
 
   const navLinks = [
     { name: 'Home', path: '/' },
+    { name: 'About', path: '/about' },
     { name: 'Blog', path: '/blog' },
     { name: 'Services', path: '/services' },
     { name: 'Portfolio', path: '/portfolio' },
@@ -29,7 +30,7 @@ const Navbar = () => {
               <Link
                 key={link.path}
                 to={link.path}
-                className={`text-sm font-medium transition-colors hover:text-blue-600 ${
+                className={`text-sm font-semibold transition-colors hover:text-blue-600 ${
                   location.pathname === link.path ? 'text-blue-600' : 'text-slate-600'
                 }`}
               >
@@ -58,7 +59,7 @@ const Navbar = () => {
 
       {/* Mobile Nav */}
       {isOpen && (
-        <div className="md:hidden bg-white border-b border-slate-200 py-4 px-4 space-y-3">
+        <div className="md:hidden bg-white border-b border-slate-200 py-4 px-4 space-y-3 shadow-lg">
           {navLinks.map((link) => (
             <Link
               key={link.path}
@@ -88,43 +89,53 @@ const Footer = () => (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
         <div className="col-span-1 md:col-span-2">
           <h3 className="text-xl font-bold text-white mb-4">AYYAN.TECH</h3>
-          <p className="max-w-md text-slate-400 leading-relaxed">
-            Professional tech content writing specializing in serverless, SaaS, and cloud computing. 
-            Helping businesses grow their online presence with SEO-optimized, beginner-friendly content.
+          <p className="max-w-md text-slate-400 leading-relaxed mb-6">
+            Professional tech content publication specializing in cloud architecture, 
+            serverless development, and SaaS strategy. Providing high-value resources for 
+            the modern technical ecosystem.
           </p>
-          <div className="flex space-x-4 mt-6">
+          <div className="flex space-x-4">
             <a 
               href="https://www.linkedin.com/in/ch-ayyan-jutt-a45a3b283" 
               target="_blank" 
               rel="noopener noreferrer" 
-              className="hover:text-blue-400 transition-colors"
+              className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all"
             >
-              <Linkedin size={20} />
+              <Linkedin size={18} />
             </a>
-            <a href="#" className="hover:text-blue-400 transition-colors"><Mail size={20} /></a>
+            <a href="mailto:zolly9130@gmail.com" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all">
+              <Mail size={18} />
+            </a>
           </div>
         </div>
         <div>
-          <h4 className="text-white font-semibold mb-4">Quick Links</h4>
-          <ul className="space-y-2">
-            <li><Link to="/blog" className="hover:text-white transition-colors">Blog</Link></li>
-            <li><Link to="/portfolio" className="hover:text-white transition-colors">Portfolio</Link></li>
-            <li><Link to="/services" className="hover:text-white transition-colors">Hire Me</Link></li>
-            <li><Link to="/contact" className="hover:text-white transition-colors">Contact</Link></li>
+          <h4 className="text-white font-bold mb-6 uppercase text-xs tracking-widest">Navigation</h4>
+          <ul className="space-y-3 text-sm">
+            <li><Link to="/" className="hover:text-blue-400 transition-colors">Home</Link></li>
+            <li><Link to="/about" className="hover:text-blue-400 transition-colors">About the Author</Link></li>
+            <li><Link to="/blog" className="hover:text-blue-400 transition-colors">Articles & Insights</Link></li>
+            <li><Link to="/portfolio" className="hover:text-blue-400 transition-colors">Writing Portfolio</Link></li>
+            <li><Link to="/services" className="hover:text-blue-400 transition-colors">Services & Pricing</Link></li>
           </ul>
         </div>
         <div>
-          <h4 className="text-white font-semibold mb-4">Categories</h4>
-          <ul className="space-y-2">
-            <li><Link to="/blog" className="hover:text-white transition-colors">Serverless</Link></li>
-            <li><Link to="/blog" className="hover:text-white transition-colors">SaaS</Link></li>
-            <li><Link to="/blog" className="hover:text-white transition-colors">Cloud Computing</Link></li>
+          <h4 className="text-white font-bold mb-6 uppercase text-xs tracking-widest">Legal & Compliance</h4>
+          <ul className="space-y-3 text-sm">
+            <li><Link to="/privacy-policy" className="hover:text-blue-400 transition-colors">Privacy Policy</Link></li>
+            <li><Link to="/terms-of-service" className="hover:text-blue-400 transition-colors">Terms of Service</Link></li>
+            <li><Link to="/contact" className="hover:text-blue-400 transition-colors">Contact Support</Link></li>
+            <li className="text-slate-600 pt-2 italic text-xs">AdSense Program Compliant</li>
           </ul>
         </div>
       </div>
-      <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-sm text-slate-500">
-        <p>&copy; {new Date().getFullYear()} Ayyan u l Haq. All rights reserved.</p>
-        <p className="mt-4 md:mt-0 italic opacity-50">Premium Tech Content Ecosystem</p>
+      <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center text-xs text-slate-500 font-medium">
+        <p>&copy; {new Date().getFullYear()} Ayyan u l Haq. All technical content is original and protected.</p>
+        <div className="flex gap-6 mt-4 md:mt-0">
+          <Link to="/privacy-policy" className="hover:text-slate-300">Privacy</Link>
+          <Link to="/terms-of-service" className="hover:text-slate-300">Terms</Link>
+          <span className="opacity-30">|</span>
+          <p className="italic">Powered by Cloud Architecture</p>
+        </div>
       </div>
     </div>
   </footer>
