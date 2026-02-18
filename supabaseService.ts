@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 import { Article } from './types';
 
 // These should be set in Replit Secrets
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim();
+const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').trim();
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
