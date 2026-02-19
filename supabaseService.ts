@@ -1,26 +1,58 @@
 import { createClient } from '@supabase/supabase-js';
 import { Article } from './types';
 
-// These should be set in Replit Secrets
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '').trim();
-const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '').trim();
+// These should be set in Replit Secrets or Environment Variables
+const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://qbsjzxbuolqsxulyhguw.supabase.co').trim();
+const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFic2p6eGJ1b2xxc3h1bHloZ3V3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyOTU3NTEsImV4cCI6MjA4NTg3MTc1MX0.2k6Ve0eNTD8UzkNfDOzlmEmesZ3LM1AVFoIMJibGpTQ').trim();
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Initialize the official Supabase client
+export let supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const db = {
+  /**
+   * Updates Supabase credentials at runtime and re-initializes the client.
+   */
+  setManualCredentials(url: string, key: string) {
+    supabase = createClient(url, key);
+  },
+
+  // AUTH
+  async login(email: string, pass: string) {
+    return await supabase.auth.signInWithPassword({ email, password: pass });
+  },
+
+  async logout() {
+    return await supabase.auth.signOut();
+  },
+
+  async getUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
+  },
+
+  /**
+   * Tests the connection to Supabase by trying to select from the articles table.
+   */
   async testConnection(): Promise<{ success: boolean; message: string }> {
     if (!supabaseUrl || !supabaseAnonKey) {
-      return { success: false, message: "Supabase URL or Anon Key is missing in environment variables." };
+      return { success: false, message: "Supabase URL or Anon Key is missing." };
     }
     try {
-      const { data, error } = await supabase.from('articles').select('id').limit(1);
-      if (error) throw error;
-      return { success: true, message: "Connected to Supabase successfully!" };
+      const { error } = await supabase.from('articles').select('id').limit(1);
+      if (error) {
+        if (error.code === '42P01') {
+          return { success: false, message: "Connected to Supabase, but the 'articles' table does not exist. Please run the SQL script." };
+        }
+        throw error;
+      }
+      return { success: true, message: "Cloud connection active and tables are ready!" };
     } catch (e: any) {
-      return { success: false, message: `Connection failed: ${e.message}` };
+      console.error("Connection error:", e);
+      return { success: false, message: e.message || "Failed to connect to Supabase. Check your network." };
     }
   },
 
+  // ARTICLES OPERATIONS
   async getAllArticles(): Promise<Article[]> {
     try {
       const { data, error } = await supabase
@@ -30,49 +62,99 @@ export const db = {
       
       if (error) throw error;
       return data || [];
-    } catch (error) {
-      console.error("Supabase Fetch Error:", error);
+    } catch (e) {
+      console.error("Fetch articles error:", e);
       return [];
+    }
+  },
+
+  async getArticleById(id: string): Promise<Article | null> {
+    try {
+      const { data, error } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('id', id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    } catch (e) {
+      console.error("Fetch article error:", e);
+      return null;
     }
   },
 
   async saveArticle(article: Article): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase
-        .from('articles')
-        .insert([article]);
-      
+      const payload = {
+        id: article.id,
+        title: article.title,
+        excerpt: article.excerpt,
+        introText: article.introText,
+        content: article.content,
+        category: article.category,
+        date: article.date,
+        readTime: article.readTime,
+        image: article.image,
+        price: article.price,
+        isPLR: article.isPLR
+      };
+
+      const { error } = await supabase.from('articles').insert(payload);
       if (error) throw error;
       return { success: true };
-    } catch (error: any) {
-      console.error("Supabase Save Error:", error);
-      return { success: false, error: error.message };
+    } catch (e: any) {
+      console.error("Save article error:", e);
+      return { success: false, error: e.message || "Cloud insert failed. Ensure you are signed in as an Admin and RLS allows writes." };
     }
   },
 
   async deleteArticle(id: string): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('articles')
-        .delete()
-        .eq('id', id);
-      
+      const { error } = await supabase.from('articles').delete().eq('id', id);
       if (error) throw error;
       return true;
-    } catch (error) {
-      console.error("Supabase Delete Error:", error);
+    } catch (e) {
+      console.error("Delete article error:", e);
+      return false;
+    }
+  },
+
+  // SALES OPERATIONS
+  async getAllSales(): Promise<any[]> {
+    try {
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.error("Fetch sales error:", e);
+      return [];
+    }
+  },
+
+  async recordSale(saleData: any): Promise<boolean> {
+    try {
+      const payload = {
+        article_id: saleData.itemId,
+        order_id: saleData.orderId,
+        item_name: saleData.itemName,
+        amount: saleData.price
+      };
+
+      const { error } = await supabase.from('sales').insert(payload);
+      if (error) throw error;
+      return true;
+    } catch (e) {
+      console.error("Record sale error:", e);
       return false;
     }
   },
 
   isConfigured(): boolean {
-    return !!(supabaseUrl && supabaseAnonKey);
-  },
-
-  getConfigs() {
-    return {
-      url: supabaseUrl || 'MISSING',
-      key: supabaseAnonKey ? 'CONFIGURED' : 'MISSING'
-    };
+    return supabaseUrl.includes('supabase.co') && supabaseAnonKey.length > 20;
   }
 };
